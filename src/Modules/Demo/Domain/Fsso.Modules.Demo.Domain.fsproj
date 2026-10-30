@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Demo Domain 项目，只编译领域实体与校验代码，不引用应用层、基础设施或数据库，保持领域模型的最小依赖边界。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Domain</RootNamespace>
+    <AssemblyName>Fsso.Modules.Demo.Domain</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Demo.fs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,34 @@
+{
+  "operations": {
+    "createDemo": "export const createDemo = <ThrowOnError extends boolean = false>(\n  options: Options<CreateDemoData, ThrowOnError>,\n) =>\n  (options.client ?? client).post<\n    CreateDemoResponses,\n    CreateDemoErrors,\n    ThrowOnError\n  >({\n    url: \"/api/demos\",\n    ...options,\n    headers: {\n      \"Content-Type\": \"application/json\",\n      ...options.headers,\n    },\n  });",
+    "deleteDemo": "export const deleteDemo = <ThrowOnError extends boolean = false>(\n  options: Options<DeleteDemoData, ThrowOnError>,\n) =>\n  (options.client ?? client).delete<\n    DeleteDemoResponses,\n    DeleteDemoErrors,\n    ThrowOnError\n  >({ url: \"/api/demos/{id}\", ...options });",
+    "getDemo": "export const getDemo = <ThrowOnError extends boolean = false>(\n  options: Options<GetDemoData, ThrowOnError>,\n) =>\n  (options.client ?? client).get<GetDemoResponses, GetDemoErrors, ThrowOnError>(\n    { url: \"/api/demos/{id}\", ...options },\n  );",
+    "listDemos": "export const listDemos = <ThrowOnError extends boolean = false>(\n  options?: Options<ListDemosData, ThrowOnError>,\n) =>\n  (options?.client ?? client).get<\n    ListDemosResponses,\n    ListDemosErrors,\n    ThrowOnError\n  >({ url: \"/api/demos\", ...options });"
+  },
+  "types": {
+    "CreateDemoRequest": "export type CreateDemoRequest = {\n  name: string;\n  description?: null | string;\n};",
+    "DemoResponse": "export type DemoResponse = {\n  id: string;\n  name: string;\n  description?: null | string;\n  createdAt: string;\n  updatedAt: string;\n};",
+    "PagedDemoResponse": "export type PagedDemoResponse = {\n  data?: Array<DemoResponse>;\n  page?: number | string;\n  limit?: number | string;\n  total?: number | string;\n};",
+    "ErrorResponse": "export type ErrorResponse = {\n  statusCode?: number | string;\n  code?: string;\n  message?: string;\n  traceId?: string;\n};",
+    "CreateDemoData": "export type CreateDemoData = {\n  body: CreateDemoRequest;\n  path?: never;\n  query?: never;\n  url: \"/api/demos\";\n};",
+    "CreateDemoErrors": "export type CreateDemoErrors = {\n  /**\n   * Bad Request\n   */\n  400: ErrorResponse;\n  /**\n   * Conflict\n   */\n  409: ErrorResponse;\n  /**\n   * Internal Server Error\n   */\n  500: ErrorResponse;\n};",
+    "CreateDemoError": "export type CreateDemoError = CreateDemoErrors[keyof CreateDemoErrors];",
+    "CreateDemoResponses": "export type CreateDemoResponses = {\n  /**\n   * Created\n   */\n  201: DemoResponse;\n};",
+    "CreateDemoResponse": "export type CreateDemoResponse = CreateDemoResponses[keyof CreateDemoResponses];",
+    "ListDemosData": "export type ListDemosData = {\n  body?: never;\n  path?: never;\n  query?: {\n    /**\n     * Page number (default 1)\n     */\n    page?: number;\n    /**\n     * Page size 1-100 (default 10)\n     */\n    limit?: number;\n  };\n  url: \"/api/demos\";\n};",
+    "ListDemosErrors": "export type ListDemosErrors = {\n  /**\n   * Bad Request\n   */\n  400: ErrorResponse;\n  /**\n   * Internal Server Error\n   */\n  500: ErrorResponse;\n};",
+    "ListDemosError": "export type ListDemosError = ListDemosErrors[keyof ListDemosErrors];",
+    "ListDemosResponses": "export type ListDemosResponses = {\n  /**\n   * OK\n   */\n  200: PagedDemoResponse;\n};",
+    "ListDemosResponse": "export type ListDemosResponse = ListDemosResponses[keyof ListDemosResponses];",
+    "GetDemoData": "export type GetDemoData = {\n  body?: never;\n  path: {\n    id: string;\n  };\n  query?: never;\n  url: \"/api/demos/{id}\";\n};",
+    "GetDemoErrors": "export type GetDemoErrors = {\n  /**\n   * Bad Request\n   */\n  400: ErrorResponse;\n  /**\n   * Not Found\n   */\n  404: ErrorResponse;\n  /**\n   * Internal Server Error\n   */\n  500: ErrorResponse;\n};",
+    "GetDemoError": "export type GetDemoError = GetDemoErrors[keyof GetDemoErrors];",
+    "GetDemoResponses": "export type GetDemoResponses = {\n  /**\n   * OK\n   */\n  200: DemoResponse;\n};",
+    "GetDemoResponse": "export type GetDemoResponse = GetDemoResponses[keyof GetDemoResponses];",
+    "DeleteDemoData": "export type DeleteDemoData = {\n  body?: never;\n  path: {\n    id: string;\n  };\n  query?: never;\n  url: \"/api/demos/{id}\";\n};",
+    "DeleteDemoErrors": "export type DeleteDemoErrors = {\n  /**\n   * Bad Request\n   */\n  400: ErrorResponse;\n  /**\n   * Not Found\n   */\n  404: ErrorResponse;\n  /**\n   * Internal Server Error\n   */\n  500: ErrorResponse;\n};",
+    "DeleteDemoError": "export type DeleteDemoError = DeleteDemoErrors[keyof DeleteDemoErrors];",
+    "DeleteDemoResponses": "export type DeleteDemoResponses = {\n  /**\n   * No Content\n   */\n  204: void;\n};",
+    "DeleteDemoResponse": "export type DeleteDemoResponse = DeleteDemoResponses[keyof DeleteDemoResponses];"
+  }
+}

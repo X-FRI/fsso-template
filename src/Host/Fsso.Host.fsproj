@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- 文件职责：Host 可执行项目，引用两个模块 Api、组合根、共享 Api 与共享内核，仅按顺序编译 Program.fs 并提供 ASP.NET Core Web SDK，不直接依赖模块实现类型。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Host</RootNamespace>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Fsso.Host</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Modules/Demo/Api/Fsso.Modules.Demo.Api.fsproj" />
+    <ProjectReference Include="../Modules/Notes/Api/Fsso.Modules.Notes.Api.fsproj" />
+    <ProjectReference Include="../Composition/Fsso.Composition/Fsso.Composition.fsproj" />
+    <ProjectReference Include="../Shared/Fsso.Api/Fsso.Api.fsproj" />
+    <ProjectReference Include="../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Demo Api 项目，按 DemoDtos、DemoOpenApi、DemoEndpoints、DemoModule 的编译顺序导出 HTTP 与 OpenAPI 契约，并引用 Domain、Application、内核和共享 Api，保持端点与模块描述符分离，避免宿主直接引用实现。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Demo.Api</RootNamespace>
+    <AssemblyName>Fsso.Modules.Demo.Api</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DemoDtos.fs" />
+    <Compile Include="DemoOpenApi.fs" />
+    <Compile Include="DemoEndpoints.fs" />
+    <Compile Include="DemoModule.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageReference Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Fsso.Modules.Demo.Domain.fsproj" />
+    <ProjectReference Include="../Application/Fsso.Modules.Demo.Application.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.Api/Fsso.Api.fsproj" />
+  </ItemGroup>
+</Project>

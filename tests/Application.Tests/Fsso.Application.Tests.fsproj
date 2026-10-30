@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Demo 应用层测试项目，引用 Domain、Application 与共享内核，使用 xUnit 验证 handler 的校验、错误和 store 交互，不启动真实 Host、数据库文件或浏览器。 -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);3261</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Tests.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Modules/Demo/Domain/Fsso.Modules.Demo.Domain.fsproj" />
+    <ProjectReference Include="../../src/Modules/Demo/Application/Fsso.Modules.Demo.Application.fsproj" />
+    <ProjectReference Include="../../src/Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Notes 模块测试项目，引用 Notes 各层及 Demo 基础设施，验证创建、获取、未找到与跨模块事务回滚，并验证失败路径不会留下部分写入。 -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);3261</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Support.fs" />
+    <Compile Include="NotesTests.fs" />
+    <Compile Include="TransactionTests.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Modules/Notes/Domain/Fsso.Modules.Notes.Domain.fsproj" />
+    <ProjectReference Include="../../src/Modules/Notes/Application/Fsso.Modules.Notes.Application.fsproj" />
+    <ProjectReference Include="../../src/Modules/Notes/Infrastructure/Fsso.Modules.Notes.Infrastructure.fsproj" />
+    <ProjectReference Include="../../src/Modules/Notes/Api/Fsso.Modules.Notes.Api.fsproj" />
+    <ProjectReference Include="../../src/Modules/Demo/Domain/Fsso.Modules.Demo.Domain.fsproj" />
+    <ProjectReference Include="../../src/Modules/Demo/Application/Fsso.Modules.Demo.Application.fsproj" />
+    <ProjectReference Include="../../src/Modules/Demo/Infrastructure/Fsso.Modules.Demo.Infrastructure.fsproj" />
+    <ProjectReference Include="../../src/Modules/Demo/Api/Fsso.Modules.Demo.Api.fsproj" />
+    <ProjectReference Include="../../src/Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+    <ProjectReference Include="../../src/Shared/Fsso.Database/Fsso.Database.fsproj" />
+    <ProjectReference Include="../../src/Composition/Fsso.Composition/Fsso.Composition.fsproj" />
+    <ProjectReference Include="../../src/Host/Fsso.Host.fsproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,54 @@
+{
+  "Domain": [
+    "Fsso.Domain.Tests.DemoCreate rejects descriptions over 500 characters",
+    "Fsso.Domain.Tests.DemoCreate rejects empty and whitespace names",
+    "Fsso.Domain.Tests.DemoCreate rejects names over 100 characters",
+    "Fsso.Domain.Tests.DemoCreate trims name and blank description becomes None",
+    "Fsso.Domain.Tests.DemoId parses and formats round trip"
+  ],
+  "Application": [
+    "Fsso.Application.Tests.CreateDemo maps domain validation to AppError",
+    "Fsso.Application.Tests.CreateDemo persists a validated demo",
+    "Fsso.Application.Tests.CreateDemo propagates store conflict",
+    "Fsso.Application.Tests.DeleteDemo returns NotFound when missing",
+    "Fsso.Application.Tests.GetDemo returns NotFound for missing id",
+    "Fsso.Application.Tests.ListDemos rejects invalid page and limit"
+  ],
+  "Integration": [
+    "Fsso.Integration.HostTests.Health returns ok",
+    "Fsso.Integration.HostTests.HttpCrud creates reads lists and deletes with Location",
+    "Fsso.Integration.HostTests.HttpMissing returns 404 and duplicate returns 409",
+    "Fsso.Integration.HostTests.HttpUnhandledException returns uniform 500 without leaking sentinel",
+    "Fsso.Integration.HostTests.HttpValidation returns uniform 400 responses",
+    "Fsso.Integration.HostTests.Unknown api path returns JSON 404",
+    "Fsso.Integration.OpenApiTests.OpenApiDocument served document equals checked-in and is complete",
+    "Fsso.Integration.StoreTests.Cancellation during delay-before-commit rolls back without 500",
+    "Fsso.Integration.StoreTests.CaseInsensitiveUnique maps duplicate names to conflict and SQLite enforces it",
+    "Fsso.Integration.StoreTests.CreateAndList persists across connections",
+    "Fsso.Integration.StoreTests.CreateRollbackError removes row written inside the transaction",
+    "Fsso.Integration.StoreTests.CreateRollbackException removes row written inside the transaction",
+    "Fsso.Integration.StoreTests.DeleteRollbackError restores deleted row",
+    "Fsso.Integration.StoreTests.DeleteRollbackException restores deleted row",
+    "Fsso.Integration.StoreTests.Fault header is ignored when injection is disabled",
+    "Fsso.Integration.StoreTests.FaultInjection rollback modes return 409 and 500 without persisting",
+    "Fsso.Integration.StoreTests.MigrationIdempotent records each version exactly once",
+    "Fsso.Integration.StoreTests.PaginationDeterministic uses id DESC for equal timestamps",
+    "Fsso.Integration.StoreTests.ReadDoesNotWrite leaves data version and rows unchanged",
+    "Fsso.Integration.StoreTests.Restart persistence reads row created before restart"
+  ],
+  "Cqrs": [
+    "Fsso.Cqrs.Tests.ConcurrentSameIdDeletesYieldOneSuccessAndRest404",
+    "Fsso.Cqrs.Tests.ConcurrentUniqueCreatesAllSucceedAndListExactlyN",
+    "Fsso.Cqrs.Tests.DelayedCancellationRollsBackAndRethrowsWithoutRow",
+    "Fsso.Cqrs.Tests.DomainErrorsMapToExpectedHttpStatus",
+    "Fsso.Cqrs.Tests.ExplicitDbPathStartsAndUsesNewPathWhileLegacyRemainsUnchanged",
+    "Fsso.Cqrs.Tests.HandlerSelection resolves exactly one handler and dispatches all four messages",
+    "Fsso.Cqrs.Tests.InjectedErrorRollsBackAndLeavesNoRow",
+    "Fsso.Cqrs.Tests.InjectedExceptionRollsBackAndLeavesNoRow",
+    "Fsso.Cqrs.Tests.LegacyDefaultPresentEnvUnsetFailsBeforeAnyDbCreation",
+    "Fsso.Cqrs.Tests.MigrateOnlyLegacyDefaultEnvUnsetFailsBeforeAnyDbCreation",
+    "Fsso.Cqrs.Tests.MissingRegistration fails clearly without a fallback handler",
+    "Fsso.Cqrs.Tests.NoLegacyDefaultUsesNewDefaultPath",
+    "Fsso.Cqrs.Tests.PreCanceledSendRollsBackAndRethrows"
+  ]
+}

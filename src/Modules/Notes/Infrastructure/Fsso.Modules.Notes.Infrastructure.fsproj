@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Notes Infrastructure 项目，编译迁移描述与 SQLite store，引用 Domain、Application、共享内核和数据库项目，为 Notes 提供持久化实现，迁移与存储实现不得泄漏到应用层。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Notes.Infrastructure</RootNamespace>
+    <AssemblyName>Fsso.Modules.Notes.Infrastructure</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="NotesMigrations.fs" />
+    <Compile Include="SqliteNoteStore.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations/003_create_notes.sql" LogicalName="migrations.003_create_notes.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <PackageReference Include="SqlHydra.Query" Version="5.1.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Fsso.Modules.Notes.Domain.fsproj" />
+    <ProjectReference Include="../Application/Fsso.Modules.Notes.Application.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.Database/Fsso.Database.fsproj" />
+  </ItemGroup>
+</Project>

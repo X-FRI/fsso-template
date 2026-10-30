@@ -1,0 +1,27 @@
+.tools/
+.tmp/
+node_modules/
+.pnpm-store/
+artifacts/
+**/bin/
+**/obj/
+data/
+*.db
+*.db-shm
+*.db-wal
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+TestResults/
+coverage/
+playwright-report/
+test-results/
+playwright-browsers/
+
+# Generated production static assets
+src/Host/wwwroot/
+
+# Frontend build output
+web/dist/

@@ -1,0 +1,75 @@
+{
+  "source": "Task 2 frozen 7-operation OpenAPI and SDK",
+  "openapi": "openapi/openapi.json",
+  "sdkRoot": "web/src/lib/api/generated",
+  "files": [
+    {
+      "path": "web/src/lib/api/generated/client.gen.ts",
+      "sha256": "cf8f520f4bf162f157f67a5efb1b7847d77b835ff936edaa30b4fad67288e519"
+    },
+    {
+      "path": "web/src/lib/api/generated/client/client.gen.ts",
+      "sha256": "9621662d65c9d7e33d64e0f0dd59a5411f8b49e6dedbb3166b41059e25759799"
+    },
+    {
+      "path": "web/src/lib/api/generated/client/index.ts",
+      "sha256": "6e65a4337ef18ae3b88ef3578f61d1ac4de7121503045cc29340846036e13ecc"
+    },
+    {
+      "path": "web/src/lib/api/generated/client/types.gen.ts",
+      "sha256": "75560adc698ca05f9dcb9bd5500db9a86978ad5faac6830bdb3f288cf964854c"
+    },
+    {
+      "path": "web/src/lib/api/generated/client/utils.gen.ts",
+      "sha256": "a222f68562662ce333685ef143fd508f82f5bf227f72f3212193072a6c05e6e3"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/auth.gen.ts",
+      "sha256": "442d7c3194db1da7ab6b295781a29a2ed4238f998276a808ddb5892b7b2f9487"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/bodySerializer.gen.ts",
+      "sha256": "703d2845141305eca2132a10dc1109b6dffc1366868fa6ab687d780fea4cb21c"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/params.gen.ts",
+      "sha256": "edfa9f515ad39114ef591d2f69db3c58cee4c0017f24445a9576806968af6252"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/pathSerializer.gen.ts",
+      "sha256": "d6fcd1ed94549cbf128bb809a7c0d98a5f6b5af93e9ef985eb11483dc1c1b0c3"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/queryKeySerializer.gen.ts",
+      "sha256": "df2b057d4516e5c445ec55d38b0cadd5cab5d58ccf25c9e06982bb2810975549"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/serverSentEvents.gen.ts",
+      "sha256": "4f7f75b00d3e6205d7bea80e608c73008b99ddac19d0f4a36097d30719d00b87"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/types.gen.ts",
+      "sha256": "71bb9f238da9ea6c9abc77bfd5a63d64b92c86c9d9e0f949aa8d01b1c01a7ffb"
+    },
+    {
+      "path": "web/src/lib/api/generated/core/utils.gen.ts",
+      "sha256": "26154dc0035ec423ab352af86ce03beb5aeac712488b605911dfe58228f7b6c1"
+    },
+    {
+      "path": "web/src/lib/api/generated/index.ts",
+      "sha256": "dfaf3e756e2340472ed5648156335fb999c31409594c2eb697f15d5231cf844e"
+    },
+    {
+      "path": "web/src/lib/api/generated/sdk.gen.ts",
+      "sha256": "24dc19792fe1ce0a4b8fde246456b26ed163a74df8831663dfaee45f04b22052"
+    },
+    {
+      "path": "web/src/lib/api/generated/types.gen.ts",
+      "sha256": "145a9378536c04ff463121a098c4cc732c4445041c164822e9ad6f225734bf2f"
+    },
+    {
+      "path": "openapi/openapi.json",
+      "sha256": "cc04c144dc35593196c39f28a9b93a192a67cc2d963f471722c247071322ea0e"
+    }
+  ]
+}

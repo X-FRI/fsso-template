@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Notes Api 项目，按 NoteDtos、NoteEndpoints、NotesModule 的顺序编译，暴露 Notes 路由与模块描述符并引用 Notes 下两层及共享 Api，保持路由与模块描述符分离并复用共享契约工具。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Notes.Api</RootNamespace>
+    <AssemblyName>Fsso.Modules.Notes.Api</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="NoteDtos.fs" />
+    <Compile Include="NoteEndpoints.fs" />
+    <Compile Include="NotesModule.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageReference Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Fsso.Modules.Notes.Domain.fsproj" />
+    <ProjectReference Include="../Application/Fsso.Modules.Notes.Application.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.Api/Fsso.Api.fsproj" />
+  </ItemGroup>
+</Project>

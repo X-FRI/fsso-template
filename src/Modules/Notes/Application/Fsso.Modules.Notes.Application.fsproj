@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Notes Application 项目，按端口、命令、查询、handler 的顺序编译，实现 Notes 用例并引用 Domain、共享内核与 MediatR，并保持端口与处理器职责分离，不依赖基础设施。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Notes.Application</RootNamespace>
+    <AssemblyName>Fsso.Modules.Notes.Application</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Ports.fs" />
+    <Compile Include="Commands/CreateNoteCommand.fs" />
+    <Compile Include="Queries/GetNoteQuery.fs" />
+    <Compile Include="Handlers/CreateNoteHandler.fs" />
+    <Compile Include="Handlers/GetNoteHandler.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
+    <PackageReference Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Fsso.Modules.Notes.Domain.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+  </ItemGroup>
+</Project>

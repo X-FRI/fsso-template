@@ -1,0 +1,11 @@
+# 文件职责：配置 SqlHydra 的 schema 数据库连接、生成文件位置、命名空间、可空属性映射和 reader 类型，供 gen-sqlhydra 脚本稳定生成数据库表类型。
+[general]
+connection = "Data Source=artifacts/schema.db"
+output = "Generated/SqlHydra.fs"
+namespace = "Fsso.Database.Generated"
+cli_mutable = true
+mutable_properties = true
+nullable_property_type = "option"
+provider_db_type_attributes = false
+table_declarations = true
+reader_type = "Microsoft.Data.Sqlite"

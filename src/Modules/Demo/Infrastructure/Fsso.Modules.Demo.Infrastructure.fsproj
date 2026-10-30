@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Demo Infrastructure 项目，编译迁移描述与 SQLite store，引用 Domain、Application、共享内核和数据库项目，负责持久化实现，迁移脚本按版本顺序随模块启动执行。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Infrastructure</RootNamespace>
+    <AssemblyName>Fsso.Modules.Demo.Infrastructure</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="DemoMigrations.fs" />
+    <Compile Include="SqliteDemoStore.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations/001_create_demos.sql" LogicalName="migrations.001_create_demos.sql" />
+    <EmbeddedResource Include="Migrations/002_index_demos_created.sql" LogicalName="migrations.002_index_demos_created.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <PackageReference Include="SqlHydra.Query" Version="5.1.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Fsso.Modules.Demo.Domain.fsproj" />
+    <ProjectReference Include="../Application/Fsso.Modules.Demo.Application.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.Database/Fsso.Database.fsproj" />
+  </ItemGroup>
+</Project>

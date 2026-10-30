@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Notes Domain 项目，只编译 Note 领域类型和不变量校验，不依赖应用层、基础设施、数据库或 Web 框架，为应用层提供稳定的领域构造入口。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Notes.Domain</RootNamespace>
+    <AssemblyName>Fsso.Modules.Notes.Domain</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Note.fs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,25 @@
+<Solution>
+  <!-- 文件职责：按 src 与 tests 分组列出全部 F# 项目；src 实际顺序为组合根、Host、Demo、Notes、Shared，tests 随后，保持项目路径与排序不变，注释不得改动任何 Project 节点。 -->
+  <Folder Name="/src/">
+    <Project Path="src/Composition/Fsso.Composition/Fsso.Composition.fsproj" />
+    <Project Path="src/Host/Fsso.Host.fsproj" />
+    <Project Path="src/Modules/Demo/Api/Fsso.Modules.Demo.Api.fsproj" />
+    <Project Path="src/Modules/Demo/Application/Fsso.Modules.Demo.Application.fsproj" />
+    <Project Path="src/Modules/Demo/Domain/Fsso.Modules.Demo.Domain.fsproj" />
+    <Project Path="src/Modules/Demo/Infrastructure/Fsso.Modules.Demo.Infrastructure.fsproj" />
+    <Project Path="src/Modules/Notes/Api/Fsso.Modules.Notes.Api.fsproj" />
+    <Project Path="src/Modules/Notes/Application/Fsso.Modules.Notes.Application.fsproj" />
+    <Project Path="src/Modules/Notes/Domain/Fsso.Modules.Notes.Domain.fsproj" />
+    <Project Path="src/Modules/Notes/Infrastructure/Fsso.Modules.Notes.Infrastructure.fsproj" />
+    <Project Path="src/Shared/Fsso.Api/Fsso.Api.fsproj" />
+    <Project Path="src/Shared/Fsso.Database/Fsso.Database.fsproj" />
+    <Project Path="src/Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Application.Tests/Fsso.Application.Tests.fsproj" />
+    <Project Path="tests/Cqrs.Tests/Fsso.Cqrs.Tests.fsproj" />
+    <Project Path="tests/Domain.Tests/Fsso.Domain.Tests.fsproj" />
+    <Project Path="tests/Integration.Tests/Fsso.Integration.Tests.fsproj" />
+    <Project Path="tests/Notes.Tests/Fsso.Notes.Tests.fsproj" />
+  </Folder>
+</Solution>

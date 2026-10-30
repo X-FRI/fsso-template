@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：共享数据库项目，编译连接解析、迁移执行器、表类型与 SqlHydra 生成代码，引用共享内核并作为模块基础设施的数据库依赖。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Database</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Db.fs" />
+    <Compile Include="Migrations.fs" />
+    <Compile Include="Generated/SqlHydra.fs" />
+    <Compile Include="Tables.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <PackageReference Include="SqlHydra.Query" Version="5.1.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：Demo Application 项目，按端口、命令、查询、handler 的顺序编译，承载 MediatR 用例并引用 Demo Domain、共享内核与 MediatR 包，并保持命令、查询与处理器分层清晰。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Application</RootNamespace>
+    <AssemblyName>Fsso.Modules.Demo.Application</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Ports.fs" />
+    <Compile Include="Commands/CreateDemoCommand.fs" />
+    <Compile Include="Commands/DeleteDemoCommand.fs" />
+    <Compile Include="Queries/GetDemoQuery.fs" />
+    <Compile Include="Queries/ListDemosQuery.fs" />
+    <Compile Include="Handlers/CreateDemoHandler.fs" />
+    <Compile Include="Handlers/GetDemoHandler.fs" />
+    <Compile Include="Handlers/ListDemosHandler.fs" />
+    <Compile Include="Handlers/DeleteDemoHandler.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
+    <PackageReference Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Fsso.Modules.Demo.Domain.fsproj" />
+    <ProjectReference Include="../../../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+  </ItemGroup>
+</Project>

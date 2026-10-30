@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：组合根项目，引用 Demo 与 Notes 的 Application/Infrastructure、共享内核与 Fsso.Database；模块描述符负责注册 handler，Composition 只聚合迁移、校验 StoreFactory 并注册 IUnitOfWork，store 由 SqliteUnitOfWork 在运行时反射构造。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.Composition</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SqliteWorkScope.fs" />
+    <Compile Include="SqliteUnitOfWork.fs" />
+    <Compile Include="Composition.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <PackageReference Include="SqlHydra.Query" Version="5.1.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Modules/Demo/Application/Fsso.Modules.Demo.Application.fsproj" />
+    <ProjectReference Include="../../Modules/Demo/Infrastructure/Fsso.Modules.Demo.Infrastructure.fsproj" />
+    <ProjectReference Include="../../Modules/Notes/Application/Fsso.Modules.Notes.Application.fsproj" />
+    <ProjectReference Include="../../Modules/Notes/Infrastructure/Fsso.Modules.Notes.Infrastructure.fsproj" />
+    <ProjectReference Include="../../Shared/Fsso.SharedKernel/Fsso.SharedKernel.fsproj" />
+    <ProjectReference Include="../../Shared/Fsso.Database/Fsso.Database.fsproj" />
+  </ItemGroup>
+</Project>

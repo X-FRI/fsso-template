@@ -1,0 +1,45 @@
+{
+  "name": "fsso-stack",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "check": "node scripts/check.mjs",
+    "gen:openapi": "node scripts/gen-openapi.mjs",
+    "gen:sdk": "node scripts/gen-sdk.mjs",
+    "shadcn:add": "node scripts/shadcn-add.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test.mjs",
+    "release:smoke": "node scripts/release-smoke.mjs",
+    "package:source": "node scripts/package-source.mjs",
+    "test:negative": "node scripts/negative-control.mjs"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.93.1",
+    "@playwright/test": "1.56.1",
+    "@sveltejs/vite-plugin-svelte": "6.2.1",
+    "@tailwindcss/forms": "0.5.10",
+    "@types/node": "^26.6.6",
+    "autoprefixer": "10.4.21",
+    "playwright": "1.56.1",
+    "postcss": "8.5.6",
+    "shadcn-svelte": "1.7.1",
+    "svelte": "5.43.2",
+    "svelte-check": "4.3.3",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.9.3",
+    "vite": "7.1.12",
+    "vitest": "3.2.4"
+  },
+  "type": "module",
+  "dependencies": {
+    "@hey-api/client-fetch": "0.13.1",
+    "bits-ui": "2.14.4",
+    "clsx": "2.1.1",
+    "tailwind-merge": "3.3.1",
+    "tailwind-variants": "3.1.1"
+  }
+}

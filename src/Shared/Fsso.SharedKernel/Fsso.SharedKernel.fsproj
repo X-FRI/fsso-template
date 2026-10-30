@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 文件职责：共享内核项目，编译应用错误、故障注入和工作单元抽象，是整个解决方案最底层且被各模块允许依赖的项目。 -->
+  <PropertyGroup>
+    <RootNamespace>Fsso.SharedKernel</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Errors.fs" />
+    <Compile Include="UnitOfWork.fs" />
+    <Compile Include="Faults.fs" />
+  </ItemGroup>
+</Project>
