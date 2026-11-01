@@ -18,7 +18,7 @@ test.describe.serial("demo journey", () => {
     await expect(
       page.getByTestId("detail-description")
     ).toHaveText("Created by the browser journey");
-    await expect(page.getByRole("list", { name: "Demo list" })).toContainText(
+    await expect(page.getByRole("table", { name: "Demo list" })).toContainText(
       "Alpha Demo"
     );
 
@@ -36,7 +36,7 @@ test.describe.serial("demo journey", () => {
     await expect(page.getByText("Alpha Demo")).toHaveCount(0);
   });
 
-  // 空白名称由服务端返回 400，页面必须以 alert 角色显示可读校验消息。
+  // 空白名称由 Superforms 客户端校验拦截，页面必须以 alert 角色显示包含 name 的消息。
   test("invalid submit shows server validation", async ({ page }) => {
     await page.goto("/");
     await page.getByLabel("Name").fill("");

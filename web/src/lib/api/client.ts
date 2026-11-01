@@ -1,11 +1,15 @@
-// 文件职责：生成 SDK 客户端配置入口，从 Vite 环境变量 VITE_API_BASE_URL 读取可选基础地址，仅在存在时覆盖默认同源配置，然后导出共享 client 实例。
+// 文件职责：配置生成的 fetch 客户端。浏览器未设置 VITE_API_BASE_URL 时走当前源，由开发代理或 SvelteKit 服务端钩子转发；服务端渲染若发起请求则直接访问 FSSO_API_ORIGIN，不连接 SQLite。
+import { browser } from "$app/environment";
 import { client } from "./generated/client.gen";
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL;
+const publicBase = import.meta.env.VITE_API_BASE_URL;
 
-// 未设置环境变量时保留生成客户端的同源默认值，生产静态站点因此可直接调用同域 /api。
-if (baseUrl) {
-  client.setConfig({ baseUrl });
+if (publicBase) {
+  client.setConfig({ baseUrl: publicBase });
+} else if (!browser) {
+  client.setConfig({
+    baseUrl: (process.env.FSSO_API_ORIGIN || "http://127.0.0.1:5080").replace(/\/+$/, ""),
+  });
 }
 
 export { client };

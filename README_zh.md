@@ -2,7 +2,7 @@
 
 FSSO Stack 是一个可运行的 F# + Svelte 全栈启动器，按编译期强制的业务模块组织。**FSSO** 是本项目对 **F# + Svelte + SQLite + OpenAPI** 的简称，不是行业标准缩写。
 
-仓库包含两个后端模块：既有的 **Demo** 创建/详情/列表/删除流程，以及刻意做小的 **Notes** 示例（一个命令、一个查询）。它演示真实 SQLite 持久化与只向前迁移、MediatR 12.5.0 CQRS、SqlHydra 查询、跨模块共享 unit of work、自动生成的 OpenAPI/TypeScript SDK、Svelte 5 + shadcn-svelte UI，以及由 .NET 单进程同时提供 `/api` 和静态 SPA 的生产形态。
+仓库包含两个后端模块：既有的 **Demo** 创建/详情/列表/删除流程，以及刻意做小的 **Notes** 示例（一个命令、一个查询）。它演示真实 SQLite 持久化与只向前迁移、MediatR 12.5.0 CQRS、SqlHydra 查询、跨模块共享 unit of work、自动生成的 OpenAPI/TypeScript SDK，以及 SvelteKit 界面。生产运行 ASP.NET Core API 与 SvelteKit Node 服务；Node 代理 `/api`，浏览器只看到一个源。
 
 > **范围与非目标：** 这是启动器/教学代码库，不是产品。它没有认证、授权、审计、租户隔离、限流、真实患者数据或真实资金处理。未经完整安全与合规评审，不要公开暴露，也不要用它处理生产临床/资金决策。
 
@@ -13,7 +13,7 @@ FSSO Stack 是一个可运行的 F# + Svelte 全栈启动器，按编译期强�
 | 组件 | 精确版本 / 职责 |
 |---|---|
 | .NET SDK | `10.0.403`；构建/运行全部 F# 项目 |
-| ASP.NET Core / F# | ASP.NET Core `10.0.14`、F# 10；Host/API/静态托管 |
+| ASP.NET Core / F# | ASP.NET Core `10.0.14`、F# 10；Host/API |
 | MediatR | `12.5.0`（Apache-2.0）；Application CQRS 分发 |
 | FsToolkit.ErrorHandling | `5.2.0`；`Task<Result<_, AppError>>` 管道 |
 | Microsoft.Data.Sqlite | `10.0.14`；SQLite 驱动 |
@@ -21,10 +21,11 @@ FSSO Stack 是一个可运行的 F# + Svelte 全栈启动器，按编译期强�
 | Microsoft.AspNetCore.OpenApi | `10.0.14`；OpenAPI 文档 |
 | Node.js | 证据使用 `26.7.0`；根 `engines` 要求 `>=22` |
 | pnpm | `10.30.3`；唯一包管理器与唯一根 lockfile |
-| Svelte / Vite | `5.43.2` / `7.1.12`；SPA |
-| TypeScript / svelte-check | `5.9.3` / `4.3.3` |
-| Tailwind CSS / bits-ui | `3.4.17` / `2.14.4`；样式与可访问原语 |
-| shadcn-svelte CLI | `1.7.1`；官方组件生成器，根 devDependency |
+| SvelteKit / adapter-node / Svelte | `2.50.2` / `5.5.2` / `5.49.2`；SSR 页面进程 |
+| Vite / TypeScript / svelte-check | `7.3.1` / `5.9.3` / `4.3.6` |
+| Tailwind CSS / bits-ui | `4.1.18` / `2.15.5`；样式与可访问原语 |
+| shadcn-svelte / formsnap / sveltekit-superforms | `1.7.2` / `2.0.1` / `2.29.1`；官方组件与表单 |
+| TanStack Query / Table / zod | `6.0.18` / `8.21.3` / `4.3.6` |
 | @hey-api/openapi-ts | `0.93.1`；生成 TypeScript SDK |
 | Vitest / Playwright | `3.2.4` / `1.56.1`；单测与浏览器测试 |
 | sqlite3 CLI | 合成备份/恢复检查使用；证据环境为系统 SQLite 3.43.2 |
@@ -40,9 +41,9 @@ src/Shared/Fsso.Api                共享 DTO、HTTP 结果映射、ModuleDescri
 src/Modules/Demo/{Domain,Application,Infrastructure,Api}
 src/Modules/Notes/{Domain,Application,Infrastructure,Api}
 src/Composition/Fsso.Composition   SQLite work scope、共享 unit of work、迁移聚合、注册
-src/Host                           启动、中间件、静态 SPA、health/OpenAPI 挂载、仅 descriptor 挂载
+src/Host                           启动、中间件、health/OpenAPI 挂载、仅 descriptor 挂载
 tests/*                            原始套件、CQRS/启动套件、独立 Notes 套件
-web/                               根包拥有的 Vite + Svelte 5 + TypeScript + shadcn-svelte 前端
+web/                               根包拥有的 SvelteKit + adapter-node + TypeScript + shadcn-svelte 前端
 ```
 
 实际项目引用图：
@@ -71,7 +72,7 @@ Fsso.Host                  -> Demo.Api, Notes.Api, Fsso.Composition, Fsso.Api, F
 
 `Directory.Build.props` 设置 `<DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>`，因此每个项目必须直接列出它使用的每个程序集。禁止边由 `.fsproj` 与源码共同检查：Domain 不引用任何项目；Application 不引用 Infrastructure/API/Host/Database 或其他模块；Infrastructure 不引用 API/Host 或其他模块；Api 不引用 Infrastructure/Host/Database 或其他模块；任何模块不引用 Host；Composition 不引用 Host。
 
-`src/Host/Program.fs` 不包含 `/api/demos` 或 `/api/notes` 路由字面量，也不包含 Demo/Notes 的 DTO、handler、store 类型。它构建基础设施、解析固定显式 descriptor 列表，并调用每个 descriptor 的服务注册、OpenAPI 贡献与端点映射。每个模块暴露 `ModuleDescriptor`（`RegisterServices`、`ConfigureOpenApi`、`MapEndpoints`、`MigrationVersions`）。健康检查、OpenAPI、静态 SPA、旧默认路径守卫和 JSON 404 回退属于基础设施端点。
+`src/Host/Program.fs` 不包含 `/api/demos` 或 `/api/notes` 路由字面量，也不包含 Demo/Notes 的 DTO、handler、store 类型。它构建基础设施、解析固定显式 descriptor 列表，并调用每个 descriptor 的服务注册、OpenAPI 贡献与端点映射。每个模块暴露 `ModuleDescriptor`（`RegisterServices`、`ConfigureOpenApi`、`MapEndpoints`、`MigrationVersions`）。健康检查、OpenAPI、旧默认路径守卫和 JSON 404 回退属于基础设施端点。页面由 SvelteKit 进程提供。
 
 四个 Demo 消息是 F# record，实现 `IRequest<Result<_, AppError>>`：`CreateDemoCommand`、`GetDemoQuery`、`ListDemosQuery`、`DeleteDemoCommand`。Notes 恰好两个：`CreateNoteCommand` 与 `GetNoteQuery`。具体 `IRequestHandler` 由各模块 descriptor 的 `AddMediatR` 程序集扫描注册。数据端点注入 `ISender` 并调用 `ISender.Send(message, ct)`。
 
@@ -145,13 +146,13 @@ node scripts/release-smoke.mjs
 npx --yes pnpm@10.30.3 package:source
 ```
 
-- `dev`：F# Host `127.0.0.1:5080` + Vite `127.0.0.1:5173`；Vite 代理 `/api` 与 `/openapi`。
+- `dev`：F# Host `127.0.0.1:5080`（`FSSO_DEV_API_PORT`）+ SvelteKit `127.0.0.1:5173`（`FSSO_DEV_WEB_PORT`）。Vite 把 `/api` 与 `/openapi` 代理到 `FSSO_API_ORIGIN`。
 - `check`：brand、structure、MediatR/许可证、OpenAPI/SDK 契约、可执行架构检查、Demo 契约、`dotnet build -warnaserror`、`svelte-check`。
-- `test`：构建/发布、负向对照、全部原始 .NET 测试项目及精确保留检查、CQRS/启动测试、独立 Notes 套件、合成 SQLite 备份/恢复、前端检查、5 个单测、5 个 Playwright Demo 旅程（打发布后的单进程）。它还会冒烟发布的 Notes create/get 端点。
-- `build`：前端 build -> `src/Host/wwwroot` -> `dotnet publish` -> `artifacts/publish/Fsso.Host.dll`。
+- `test`：构建/发布、负向对照、全部原始 .NET 测试项目及精确保留检查、CQRS/启动测试、独立 Notes 套件、合成 SQLite 备份/恢复、前端检查、5 个单测、5 个 Playwright Demo 旅程（打发布后的 SvelteKit 源）。它还会冒烟发布的 Notes create/get 端点。
+- `build`：SvelteKit 构建到 `web/build/index.js`，再 `dotnet publish` 到 `artifacts/publish/Fsso.Host.dll`。构建期间会写入临时 `web/package.json` 供 adapter-node 读取根依赖，结束后删除。Host 发布目录不包含页面。
 - `dotnet artifacts/publish/Fsso.Host.dll --migrate-only`：只应用迁移、不启动 HTTP；使用同一 fail-closed DB 守卫。
-- `release:smoke`：发布包单进程静态/API/404/Demo 重启/Notes 创建-读取-重启冒烟。
-- `package:source`：从已提交 `HEAD` 创建 `artifacts/fsso-modular-source-v2.tar.gz`（可用 `FSSO_ARCHIVE_PATH=<path>` 覆盖），再解压到新的唯一 `independent-<sourceSha>-<timestamp>-<pid>` 目录。若归档或解压路径已存在则拒绝覆盖；执行 frozen install、`pnpm check`、`pnpm test`、build/publish、备份/恢复、Demo 浏览器 5、单进程静态/API、独立 host 的 Demo create/list/get（重启后再 get，不含 delete/update）、Notes create/get、重启持久化、报告占位符/状态门禁与零旧品牌词审计。完整 `pnpm test` 与 release smoke 会执行 Demo delete；独立 host 不执行。绝不删除既有归档、解压目录或证据。
+- `release:smoke`：发布后的 API 与 SvelteKit Node 进程；代理健康检查、JSON 404、Demo 与 Notes 创建/读取、重启持久化，以及 Demo 删除。
+- `package:source`：从已提交 `HEAD` 创建 `artifacts/fsso-modular-source-v2.tar.gz`（可用 `FSSO_ARCHIVE_PATH=<path>` 覆盖），再解压到新的唯一 `independent-<sourceSha>-<timestamp>-<pid>` 目录。若归档或解压路径已存在则拒绝覆盖；执行 frozen install、`pnpm check`、`pnpm test`、build/publish、备份/恢复、Demo 浏览器 5、双进程页面/API 检查、独立 host 经 SvelteKit 代理的 Demo create/list/get（API 重启后再 get，不含 delete/update）、Notes create/get、重启持久化、报告占位符/状态门禁与零旧品牌词审计。完整 `pnpm test` 与 release smoke 会执行 Demo delete；独立 host 不执行。绝不删除既有归档、解压目录或证据。
 
 环境变量：
 
@@ -159,10 +160,13 @@ npx --yes pnpm@10.30.3 package:source
 |---|---|---|
 | `FSSO_DB_PATH` | `data/fsso.db` | SQLite 路径；相对工作目录，或绝对路径 |
 | `ASPNETCORE_URLS` | ASP.NET 默认；dev 为 `http://127.0.0.1:5080` | 监听地址 |
-| `ASPNETCORE_ENVIRONMENT` | 发布运行默认 `Production` | `Development` 不启用静态 SPA；开发 UI 用 Vite |
+| `ASPNETCORE_ENVIRONMENT` | 发布运行默认 `Production` | `Development` 用于开发 Host；页面仍由 SvelteKit 提供 |
 | `FSSO_FAULT_INJECTION` | 关闭 | 仅测试用 `X-Test-Fault`；生产绝不启用 |
-| `VITE_API_BASE_URL` | 空（同源） | 可选前端构建绝对 API 基址 |
-| `BASE_URL` | `http://127.0.0.1:5173` | Playwright 目标；测试改为发布地址 |
+| `FSSO_API_ORIGIN` | `http://127.0.0.1:5080` | Vite 开发代理与 SvelteKit 生产代理使用的 API 源 |
+| `FSSO_DEV_API_PORT` / `FSSO_DEV_WEB_PORT` | `5080` / `5173` | 开发监听端口 |
+| `HOST` / `PORT` / `ORIGIN` | adapter-node 默认 | 生产 SvelteKit 监听地址。将 `HOST` 设为 `127.0.0.1`，并指定 `PORT` |
+| `VITE_API_BASE_URL` | 空（同源） | 可选绝对 API 基址。为空时浏览器请求 SvelteKit 源 |
+| `BASE_URL` | `http://127.0.0.1:5173` | Playwright 目标；测试改为发布后的 SvelteKit 地址 |
 | `FSSO_TEST_PORT`、`FSSO_RELEASE_PORT`、`FSSO_PACKAGE_PORT` | `0`（自动） | 测试/冒烟/打包可选固定端口 |
 | `FSSO_SCRATCH` | `artifacts/independence` | 源码包独立解压根目录 |
 
@@ -254,7 +258,7 @@ ASPNETCORE_ENVIRONMENT="Production" \
 dotnet artifacts/publish/Fsso.Host.dll
 ```
 
-生产形态是一个 .NET 进程同时提供 `wwwroot` 与 `/api`；没有 SSR，生产运行时不依赖 Node。未知 `/api/*` 返回 JSON 错误，绝不回退到 `index.html`。不要让多个应用实例指向同一 SQLite 文件：SQLite 锁 + busy timeout 保护单进程，不是多实例部署方案。WAL 与水平扩展只是建议，未实现。
+生产形态是两个进程。`dotnet artifacts/publish/Fsso.Host.dll` 提供 `/api` 与 OpenAPI。`node web/build/index.js` 提供 SvelteKit 页面，并把 `/api` 与 `/openapi` 代理到 `FSSO_API_ORIGIN`。Node 不打开 SQLite。未知 `/api/*` 返回 JSON 错误。不要让多个 API 实例指向同一 SQLite 文件：SQLite 锁 + busy timeout 保护单个写入者，不是多实例部署方案。WAL 与水平扩展只是建议，未实现。
 
 升级：
 
@@ -288,8 +292,8 @@ dotnet artifacts/publish/Fsso.Host.dll
 ## 13. 故障排查
 
 - **启动：旧 pre-FSSO 默认数据库错误。** 将 `FSSO_DB_PATH` 设为显式恢复/全新路径。不要盲目删除或移动旧文件；先做并验证备份。
-- **`database is locked`。** 停止额外写入者/实例；本应用是单进程。检查数据目录权限与 5 秒 busy timeout。
-- **生产静态页 404。** 运行 `pnpm build`；Production 使用 `src/Host/wwwroot`。Development 下 SPA 由 Vite 提供，不是 Kestrel。
+- **`database is locked`。** 停止额外的 API 写入者。同一 SQLite 文件只应由一个 Host 进程打开。检查数据目录权限与 5 秒 busy timeout。
+- **生产页面 404。** 运行 `pnpm build`，启动 Host，再以指向该 Host 的 `FSSO_API_ORIGIN` 启动 `node web/build/index.js`。Host 本身不提供页面。
 - **迁移看起来过期。** 重启应用或执行迁移路径；不要编辑已应用 SQL，新增编号迁移。
 - **SqlHydra 类型缺少表。** 先迁移 schema DB，再运行 `bash scripts/gen-sqlhydra.sh`。脚本走 Host migrate-only，因此两个模块都在。
 - **打包拒绝启动。** 目标归档（默认 `artifacts/fsso-modular-source-v2.tar.gz`）或解压目录已存在。保留旧证据并用 `FSSO_ARCHIVE_PATH` 选择新的版本化路径；不会自动删除。
@@ -305,7 +309,7 @@ dotnet artifacts/publish/Fsso.Host.dll
 | FsToolkit.ErrorHandling `5.2.0` | MIT |
 | Microsoft.Data.Sqlite `10.0.14`、Microsoft.AspNetCore.OpenApi `10.0.14` | MIT |
 | SqlHydra.Query/Cli `5.1.1` | MIT |
-| Svelte `5.43.2`、Vite `7.1.12`、bits-ui `2.14.4`、Tailwind CSS `3.4.17`、shadcn-svelte `1.7.1`、@hey-api/openapi-ts `0.93.1`、Vitest `3.2.4`、svelte-check `4.3.3`、tailwind-variants `3.1.1`、clsx `2.1.1`、tailwind-merge `3.3.1` | MIT |
+| SvelteKit `2.50.2`、adapter-node `5.5.2`、Svelte `5.49.2`、Vite `7.3.1`、bits-ui `2.15.5`、Tailwind CSS `4.1.18`、shadcn-svelte `1.7.2`、formsnap `2.0.1`、sveltekit-superforms `2.29.1`、@hey-api/openapi-ts `0.93.1`、Vitest `3.2.4`、svelte-check `4.3.6`、tailwind-variants `3.2.2`、clsx `2.1.1`、tailwind-merge `3.4.0`、zod `4.3.6` | MIT |
 | TypeScript `5.9.3` | Apache-2.0 |
 | Playwright / @playwright/test `1.56.1` | Apache-2.0 |
 
@@ -313,7 +317,7 @@ dotnet artifacts/publish/Fsso.Host.dll
 
 ## 15. 已实现 vs 建议
 
-**已实现：** 模块化 shared kernel/database/API、Demo 与 Notes 模块、跨模块共享 SQLite unit of work、编译期模块边界与可执行架构检查；真实 SQLite + 只向前迁移；FK 开启、busy timeout 5000、私有缓存、无 WAL；旧默认路径 fail-closed 启动；显式路径恢复；合成备份/恢复验证；单进程生产托管；生成 OpenAPI/SDK/SqlHydra 类型；shadcn 组件生成；原始测试身份保留与独立 CQRS/启动、Notes 测试计数。
+**已实现：** 模块化 shared kernel/database/API、Demo 与 Notes 模块、跨模块共享 SQLite unit of work、编译期模块边界与可执行架构检查；真实 SQLite + 只向前迁移；FK 开启、busy timeout 5000、私有缓存、无 WAL；旧默认路径 fail-closed 启动；显式路径恢复；合成备份/恢复验证；双进程生产托管（API 与 SvelteKit adapter-node）；生成 OpenAPI/SDK/SqlHydra 类型；shadcn 组件生成；原始测试身份保留与独立 CQRS/启动、Notes 测试计数。
 
 **建议但未实现：** WAL/多实例部署、认证/授权、审计日志、CSRF/限流、托管备份/监控、TLS 终止、反向代理加固、CI、Notes 列表/删除/Tags/UI。这些是运维或未来任务责任。
 

@@ -43,7 +43,7 @@ try {
   assert(existsSync(rootLock), "root pnpm-lock.yaml is missing");
 
   const manifest = JSON.parse(readFileSync(rootManifest, "utf8"));
-  assert(manifest.devDependencies?.["shadcn-svelte"] === "1.7.1", "root devDependency shadcn-svelte must be 1.7.1");
+  assert(manifest.devDependencies?.["shadcn-svelte"] === "1.7.2", "root devDependency shadcn-svelte must be 1.7.2");
   assert(manifest.packageManager?.startsWith("pnpm@"), "root package.json must declare pnpm");
 
   const before = snapshot();
@@ -55,7 +55,7 @@ try {
   };
   writeFileSync(tempManifest, `${JSON.stringify(manifest, null, 2)}\n`);
   staged = true;
-  console.log(`shadcn-add: staged temporary web/package.json; running official CLI 1.7.1`);
+  console.log(`shadcn-add: staged temporary web/package.json; running official CLI 1.7.2`);
 
   const command = [cli, ["add", ...args, "--cwd", "web", "--no-deps-install", "-y"]];
   console.log(`shadcn-add: ${command[0]} ${command[1].join(" ")}`);

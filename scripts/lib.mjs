@@ -1,11 +1,43 @@
 // 文件职责：集中提供仓库根定位、断言、pnpm 运行器、子进程与进程树清理、HTTP 等待、日志记录、哈希和 F# 注释剥离等跨脚本基础设施，减少重复实现。
 import { spawn, spawnSync } from "node:child_process";
+import { createServer } from "node:net";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function reserveLoopbackPort() {
+  return new Promise((resolvePort, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close((error) => (error ? reject(error) : resolvePort(port)));
+    });
+  });
+}
+
+export function startKitServer(label, options) {
+  const port = options.port;
+  const origin = `http://127.0.0.1:${port}`;
+  const appRoot = options.appRoot ?? root;
+  const child = startProcess(label, process.execPath, [resolve(appRoot, "web/build/index.js")], {
+    cwd: resolve(appRoot, "web"),
+    logFile: options.logFile,
+    env: {
+      ...process.env,
+      ...options.env,
+      HOST: "127.0.0.1",
+      PORT: String(port),
+      ORIGIN: origin,
+      FSSO_API_ORIGIN: options.apiOrigin,
+    },
+  });
+  return { child, origin };
+}
 
 export function pnpmRunner() {
   const execpath = process.env.npm_execpath;

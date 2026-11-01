@@ -1,4 +1,4 @@
-// 文件职责：编排静态检查、五个后端测试项目、前端单元测试、Playwright 浏览器测试与备份恢复，汇总每项返回码和通过数量并写出测试摘要。
+// 文件职责：编排静态检查、五个后端测试项目、前端单元测试、Playwright 浏览器测试与备份恢复，发布验收改为 API 进程加 SvelteKit Node 进程，并汇总每项返回码与通过数量。
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -7,9 +7,11 @@ import {
   httpJson,
   killOwnedTree,
   pnpmRunner,
+  reserveLoopbackPort,
   root,
   runLogged,
   sleep,
+  startKitServer,
   startProcess,
   waitForHttp,
 } from "./lib.mjs";
@@ -17,8 +19,9 @@ import {
 const artifacts = resolve(root, "artifacts");
 const publish = resolve(artifacts, "publish");
 const db = resolve(artifacts, "test-e2e.db");
-const port = Number(process.env.FSSO_TEST_PORT ?? 0);
-const listenUrl = `http://127.0.0.1:${Number.isInteger(port) ? port : 0}`;
+const requestedPort = Number(process.env.FSSO_TEST_PORT ?? 0);
+const apiPort = requestedPort > 0 ? requestedPort : await reserveLoopbackPort();
+const listenUrl = `http://127.0.0.1:${apiPort}`;
 const pnpm = pnpmRunner();
 const web = resolve(root, "web");
 const trxDir = resolve(artifacts, "test-trx");
@@ -27,7 +30,9 @@ mkdirSync(artifacts, { recursive: true });
 
 const summary = [];
 let host = null;
+let kit = null;
 let base = null;
+let webOrigin = null;
 let hostLog = "";
 let exitCode = 0;
 
@@ -39,11 +44,17 @@ function record(label, result, extra = "") {
   if (status !== 0) exitCode = status || 1;
 }
 
-async function stopHost() {
-  if (!host) return;
-  const pid = host.pid;
+async function stopOwned(child) {
+  if (!child) return;
+  const pid = child.pid;
   await killOwnedTree(pid);
-  await Promise.race([new Promise((resolve) => host.once("exit", resolve)), sleep(5_000)]);
+  await Promise.race([new Promise((resolve) => child.once("exit", resolve)), sleep(5_000)]);
+}
+
+async function stopHost() {
+  await stopOwned(kit);
+  kit = null;
+  await stopOwned(host);
   host = null;
 }
 
@@ -208,17 +219,30 @@ try {
   );
   if (exitCode !== 0) throw new Error("SQLite backup/restore check failed");
 
+  const sync = runLogged(
+    "svelte-kit sync",
+    process.execPath,
+    [resolve(root, "node_modules/@sveltejs/kit/svelte-kit.js"), "sync"],
+    { cwd: web, logFile: resolve(artifacts, "test-svelte-kit-sync.log") }
+  );
+  if (sync.status !== 0) throw new Error("svelte-kit sync failed");
   record(
     "frontend check",
-    runLogged("frontend check", pnpm.command, [...pnpm.prefix, "exec", "svelte-check", "--tsconfig", "web/tsconfig.json"], {
-      logFile: resolve(artifacts, "test-frontend-check.log"),
-    })
+    runLogged(
+      "frontend check",
+      process.execPath,
+      [resolve(root, "node_modules/svelte-check/bin/svelte-check"), "--tsconfig", "tsconfig.json"],
+      { cwd: web, logFile: resolve(artifacts, "test-frontend-check.log") }
+    )
   );
   if (exitCode !== 0) throw new Error("frontend check failed");
 
-  const unit = runLogged("frontend unit", pnpm.command, [...pnpm.prefix, "exec", "vitest", "run", "--root", "web", "web/src"], {
-    logFile: resolve(artifacts, "test-frontend-unit.log"),
-  });
+  const unit = runLogged(
+    "frontend unit",
+    process.execPath,
+    [resolve(root, "node_modules/vitest/vitest.mjs"), "run", "src"],
+    { cwd: web, logFile: resolve(artifacts, "test-frontend-unit.log") }
+  );
   const unitCounts = unit.output.match(/Tests\s+(\d+)\s+passed/);
   record("frontend unit", unit, unitCounts ? `passed=${unitCounts[1]}` : "counts-unparsed");
   if (exitCode !== 0) throw new Error("frontend unit tests failed");
@@ -245,10 +269,23 @@ try {
       FSSO_FAULT_INJECTION: "0",
     },
   });
-  await waitForApp("published app");
+  await waitForApp("published API");
   assertSingleDotnetTree(host.pid);
-  const staticIndex = await httpJson(`${base}/`);
-  assert(staticIndex.status === 200 && staticIndex.text.includes('<div id="app">'), "published app did not serve SPA index");
+  const apiPage = await httpJson(`${base}/`);
+  assert(apiPage.status === 404, `API process served a page: HTTP ${apiPage.status}`);
+  const kitPort = await reserveLoopbackPort();
+  const started = startKitServer("web", {
+    port: kitPort,
+    apiOrigin: base,
+    logFile: resolve(artifacts, "test-web.log"),
+  });
+  kit = started.child;
+  webOrigin = started.origin;
+  await waitForHttp(`${webOrigin}/`, { child: kit, label: "published SvelteKit" });
+  const page = await httpJson(`${webOrigin}/`);
+  assert(page.status === 200 && page.text.includes("FSSO Stack"), "published SvelteKit page did not render");
+  const proxied = await httpJson(`${webOrigin}/api/health`);
+  assert(proxied.status === 200 && proxied.json?.status === "ok", "published SvelteKit proxy failed");
 
   const note = await httpJson(`${base}/api/notes`, {
     method: "POST",
@@ -268,7 +305,7 @@ try {
     [...pnpm.prefix, "exec", "playwright", "test", "--config", "web/playwright.config.ts", "web/e2e/demo.spec.ts"],
     {
       logFile: resolve(artifacts, "test-playwright.log"),
-      env: { ...process.env, BASE_URL: base },
+      env: { ...process.env, BASE_URL: webOrigin },
     }
   );
   const pwCounts = playwright.output.match(/(\d+)\s+passed/);

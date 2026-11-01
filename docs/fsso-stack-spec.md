@@ -1,6 +1,6 @@
 # FSSO Stack — Migration and Product Spec
 
-Status: implementation spec for this order, amended 2026-10-29 to require actual MediatR CQRS (supersedes the earlier explicit-handler/no-MediatR rule). Supersedes branding/repository-layout statements in historical documents, not their recorded test evidence.
+Status: implementation spec for this order, amended 2026-10-29 to require actual MediatR CQRS (supersedes the earlier explicit-handler/no-MediatR rule). Amended 2026-11-01: the frontend is SvelteKit with adapter-node, not a Vite SPA, and production is an API process plus a Node page process. Supersedes branding/repository-layout statements in historical documents, not their recorded test evidence.
 Baseline: HEAD `96e00073c29228d72553d5606ac9bec1ad550446`.
 Name: **FSSO Stack** only. FSSO = F# + Svelte + SQLite + OpenAPI, a project-local acronym, not an external standard and not a SAFE/community claim.
 
@@ -27,7 +27,7 @@ Target (single package, no workspace/monorepo):
 ```
 package.json                 root owns all frontend/runtime dev dependencies + scripts
 pnpm-lock.yaml               single lockfile
-web/                         Vite + Svelte 5 + shadcn-svelte + generated SDK + e2e
+web/                         SvelteKit + adapter-node + Svelte 5 + shadcn-svelte + generated SDK + e2e
 src/{Domain,Application,Infrastructure,Host}
 tests/{Domain.Tests,Application.Tests,Integration.Tests}
 scripts/                     dev/build/check/test/gen/backup/package/brand checks
@@ -37,12 +37,12 @@ FssoStack.slnx
 
 - Remove `pnpm-workspace.yaml`, `apps/`, nested `web/package.json`, and all workspace package names. Root `package.json` owns Svelte, Vite, Tailwind, bits-ui, shadcn dependencies, Playwright/Vitest, SDK generator, and scripts.
 - `web/components.json` stays in `web`; generated shadcn component files remain under `web/src/lib/components/ui`. `web/openapi-ts.config.ts` outputs `web/src/lib/api/generated`; all Svelte imports use `$lib` paths.
-- Actual shadcn-svelte generation is required, not only build/help. Pin the official CLI `shadcn-svelte@1.7.1` as a root dev dependency and provide a root script that targets `web` (temporary manifest for CLI discovery is removed afterward). Generate at least one real component into `web/src/lib/components/ui`, verify it builds/checks, and record the official command/RC. Preserve one root package/lockfile, no workspace, and no persistent nested `web/package.json`.
+- Actual shadcn-svelte generation is required, not only build/help. Pin the official CLI `shadcn-svelte@1.7.2` as a root dev dependency and provide a root script that targets `web` (temporary manifest for CLI discovery is removed afterward). Generate real components into `web/src/lib/components/ui`, verify they build/check, and record the official command/RC. Preserve one root package/lockfile, no workspace, and no persistent nested `web/package.json`. Forms use Formsnap and sveltekit-superforms.
 - Root commands, invoked at repository root:
-  - `pnpm dev`: persistent Host + Vite (web root) with `/api`/`/openapi` proxy; `--smoke` bounded proxy check; unexpected child failure propagates; exact owned-PID cleanup only.
+  - `pnpm dev`: persistent Host + SvelteKit `vite dev` in `web/` with `/api`/`/openapi` proxy; `--smoke` bounded proxy check; unexpected child failure propagates; exact owned-PID cleanup only.
   - `pnpm check`, `pnpm test`, `pnpm build`, `pnpm gen:openapi`, `pnpm gen:sdk`, `pnpm test:negative`, `pnpm package:source`.
   - `pnpm test` runs real SQLite/HTTP integration, negative control, F# suite, frontend check/unit, and 5 Playwright journeys against the published single-process app.
-- `pnpm build` builds `web`, copies `web/dist` to `src/Host/wwwroot`, publishes one .NET process. Production serves static files and API; unknown `/api/*` is JSON 404; non-API SPA fallback only. No Node at runtime.
+- `pnpm build` builds the SvelteKit adapter-node output at `web/build` and publishes the API-only Host. Production runs `dotnet artifacts/publish/Fsso.Host.dll` and `node web/build/index.js`. The Node process proxies `/api` and `/openapi`. Unknown `/api/*` stays JSON 404. The Host does not serve the page.
 - Playwright uses the project-local Chromium via `PLAYWRIGHT_BROWSERS_PATH`; `BASE_URL` external mode is supported.
 - Active source/scripts/config/docs must contain no `apps/frontend` consumer. Historical evidence files may retain old paths only when explicitly marked `HISTORICAL (pre-FSSO)`; active README/spec/plan/scripts/tests/CI must not.
 - No CI workflow exists in the baseline. Do not add new CI; if one is introduced by later work it must use the root command model. This task does not add CI scope.
@@ -51,7 +51,7 @@ FssoStack.slnx
 
 - Four compile-enforced F# projects; Domain has no ASP.NET/SQL/Application reference; Application references Domain plus MediatR; Infrastructure implements ports; Host composes.
 - **Actual MediatR CQRS (amendment):** each command/query is an F# record implementing `IRequest<Result<'T, AppError>>`; each request has a concrete `IRequestHandler<'TRequest, Result<'T, AppError>>` in Application. Messages carry the existing request data (`CreateDemoCommand`, `GetDemoQuery`, `ListDemosQuery`, `DeleteDemoCommand`). Handler dependencies are constructor-injected (`IUnitOfWork`, `IFaultInjector`); no `DemoHandlers` function record or home-grown bus remains.
-- Host registers handlers by real MediatR DI assembly scanning (`AddMediatR` + `RegisterServicesFromAssembly` for the Application assembly). Every product data endpoint (`POST/GET/GET-by-id/DELETE /api/demos...`) resolves `ISender` and dispatches its message through `ISender.Send(message, cancellationToken)`; endpoint behavior is not a direct handler/service call and MediatR is not a dependency-only decoration. `/api/health`, the OpenAPI document endpoint, and static/SPA serving are infrastructure endpoints and are explicitly exempt from message dispatch (health remains a direct liveness response).
+- Host registers handlers by real MediatR DI assembly scanning (`AddMediatR` + `RegisterServicesFromAssembly` for the Application assembly). Every product data endpoint (`POST/GET/GET-by-id/DELETE /api/demos...`) resolves `ISender` and dispatches its message through `ISender.Send(message, cancellationToken)`; endpoint behavior is not a direct handler/service call and MediatR is not a dependency-only decoration. `/api/health` and the OpenAPI document endpoint are infrastructure endpoints and are explicitly exempt from message dispatch (health remains a direct liveness response). Page rendering is the SvelteKit process, not a Host endpoint.
 - NestJS-like developer experience documented: message type = command/query, handler registration automatic by assembly scan/DI, one handler per request, endpoint/transport remains thin. No controllers calling application services directly.
 - Each command handler performs exactly one unit-of-work transaction through the existing `IUnitOfWork.Run`; `Ok` commits, `Error`, exceptions, and cancellation preserve existing rollback/rethrow semantics. `Get`/`List` retain read-transaction behavior. CancellationToken flows from HTTP -> `ISender.Send` -> handler -> UoW/store/fault without replacement.
 - Uniform typed errors 400/404/409/500, camelCase `ErrorResponse`, no leaked exceptions, malformed JSON/query/id, cancellation rollback/rethrow.
@@ -79,7 +79,7 @@ FssoStack.slnx
 ## 5. README deliverables
 
 - English `README.md` is primary and complete; `README_zh.md` mirrors it with equivalent facts.
-- Required coverage: scope and explicit non-goals; exact supported versions and roles; architecture/dependencies/actual MediatR 12.5.0 CQRS and NestJS-like message->handler->DI mapping, SQLite persistence, static SPA/no SSR; install and all commands; tests/evidence; OpenAPI/SDK/SqlHydra generation; migrations/new-module guide; SQLite file/init/versioning/FK/busy timeout/no WAL; consistent backup/restore and safe default-path migration; production build/run/upgrade/rollback; reverse proxy/HTTPS/data dir/security; no auth/audit; no public/real-fund use; troubleshooting; actual dependency/license status (including MediatR 12.5.0 Apache-2.0 pin, no upstream updates/security support, no 13+/RPL/commercial use, no registered paid license); implemented vs recommended clearly distinct.
+- Required coverage: scope and explicit non-goals; exact supported versions and roles; architecture/dependencies/actual MediatR 12.5.0 CQRS and NestJS-like message->handler->DI mapping, SQLite persistence, SvelteKit adapter-node plus API process; install and all commands; tests/evidence; OpenAPI/SDK/SqlHydra generation; migrations/new-module guide; SQLite file/init/versioning/FK/busy timeout/no WAL; consistent backup/restore and safe default-path migration; production build/run/upgrade/rollback; reverse proxy/HTTPS/data dir/security; no auth/audit; no public/real-fund use; troubleshooting; actual dependency/license status (including MediatR 12.5.0 Apache-2.0 pin, no upstream updates/security support, no 13+/RPL/commercial use, no registered paid license); implemented vs recommended clearly distinct.
 - Include the FSSO acronym definition and brand regression statement. No legacy token.
 - Mark historical evidence files as historical without changing their recorded results beyond neutral brand redaction.
 

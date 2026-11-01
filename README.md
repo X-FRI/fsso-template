@@ -2,7 +2,7 @@
 
 FSSO Stack is a runnable F# + Svelte full-stack starter arranged as compile-enforced business modules. **FSSO** is this project's label for **F# + Svelte + SQLite + OpenAPI**.
 
-The repository contains two backend modules: the existing **Demo** create/get/list/delete workflow and a deliberately small **Notes** example with one command and one query. It demonstrates real SQLite persistence and forward-only migrations, MediatR 12.5.0 CQRS, SqlHydra-backed queries, a shared cross-module unit of work, generated OpenAPI/TypeScript SDK, Svelte 5 + shadcn-svelte UI, and single-process production hosting where .NET serves both `/api` and the static SPA.
+The repository contains two backend modules: the existing **Demo** create/get/list/delete workflow and a deliberately small **Notes** example with one command and one query. It demonstrates real SQLite persistence and forward-only migrations, MediatR 12.5.0 CQRS, SqlHydra-backed queries, a shared cross-module unit of work, generated OpenAPI/TypeScript SDK, and a SvelteKit UI. Production runs the ASP.NET Core API and a SvelteKit Node server; the Node server proxies `/api` so the browser sees one origin.
 
 > **Scope and non-goals:** this is a starter/teaching codebase, not a product. It has no authentication, authorization, audit trail, tenant isolation, rate limiting, real patient data, or real-fund handling. Do not expose it publicly or use it for production financial/clinical decisions without a full security and compliance review.
 
@@ -21,10 +21,11 @@ For a beginner-oriented, source-traced Chinese walkthrough of Demo/Notes, Mediat
 | Microsoft.AspNetCore.OpenApi | `10.0.14`; OpenAPI document |
 | Node.js | `26.7.0` used in evidence; root `engines` requires `>=22` |
 | pnpm | `10.30.3`; only package manager and only root lockfile |
-| Svelte / Vite | `5.43.2` / `7.1.12`; SPA |
-| TypeScript / svelte-check | `5.9.3` / `4.3.3` |
-| Tailwind CSS / bits-ui | `3.4.17` / `2.14.4`; styling and accessible primitives |
-| shadcn-svelte CLI | `1.7.1`; official component generator, root devDependency |
+| SvelteKit / adapter-node / Svelte | `2.50.2` / `5.5.2` / `5.49.2`; SSR page process |
+| Vite / TypeScript / svelte-check | `7.3.1` / `5.9.3` / `4.3.6` |
+| Tailwind CSS / bits-ui | `4.1.18` / `2.15.5`; styling and accessible primitives |
+| shadcn-svelte / formsnap / sveltekit-superforms | `1.7.2` / `2.0.1` / `2.29.1`; official components and forms |
+| TanStack Query / Table / zod | `6.0.18` / `8.21.3` / `4.3.6` |
 | @hey-api/openapi-ts | `0.93.1`; generated TypeScript SDK |
 | Vitest / Playwright | `3.2.4` / `1.56.1`; unit and browser tests |
 | sqlite3 CLI | Used by the synthetic backup/restore check; system SQLite 3.43.2 in evidence |
@@ -40,9 +41,9 @@ src/Shared/Fsso.Api                shared DTOs, HTTP result mapping, ModuleDescr
 src/Modules/Demo/{Domain,Application,Infrastructure,Api}
 src/Modules/Notes/{Domain,Application,Infrastructure,Api}
 src/Composition/Fsso.Composition   SQLite work scope, shared unit of work, migration aggregation, registration
-src/Host                           startup, middleware, static SPA, health/OpenAPI mount, descriptor mounting only
+src/Host                           startup, middleware, health/OpenAPI mount, descriptor mounting only
 tests/*                            original suites, CQRS/startup, and the separate Notes suite
-web/                               root-owned Vite + Svelte 5 + TypeScript + shadcn-svelte frontend
+web/                               root-owned SvelteKit + adapter-node + TypeScript + shadcn-svelte frontend
 ```
 
 Actual project-reference graph:
@@ -71,7 +72,7 @@ Fsso.Host                  -> Demo.Api, Notes.Api, Fsso.Composition, Fsso.Api, F
 
 `Directory.Build.props` sets `<DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>`, so every project lists every assembly it uses directly. Forbidden edges are checked by source and by `.fsproj`: a Domain project references nothing; Application never references Infrastructure/API/Host/Database or another module; Infrastructure never references API/Host or another module; Api never references Infrastructure/Host/Database or another module; no module references Host; Composition never references Host.
 
-`src/Host/Program.fs` contains no `/api/demos` or `/api/notes` route literal and no Demo/Notes DTO, handler, or store type. It builds infrastructure, resolves a fixed explicit descriptor list, and calls each descriptor's service registration, OpenAPI contribution, and endpoint mapping. Each module exposes a `ModuleDescriptor` (`RegisterServices`, `ConfigureOpenApi`, `MapEndpoints`, `MigrationVersions`). Health, OpenAPI, static SPA, the legacy default-path guard, and the JSON 404 fallback are infrastructure endpoints.
+`src/Host/Program.fs` contains no `/api/demos` or `/api/notes` route literal and no Demo/Notes DTO, handler, or store type. It builds infrastructure, resolves a fixed explicit descriptor list, and calls each descriptor's service registration, OpenAPI contribution, and endpoint mapping. Each module exposes a `ModuleDescriptor` (`RegisterServices`, `ConfigureOpenApi`, `MapEndpoints`, `MigrationVersions`). Health, OpenAPI, the legacy default-path guard, and the JSON 404 fallback are infrastructure endpoints. The page is served by SvelteKit, not by this process.
 
 The four Demo messages are F# records implementing `IRequest<Result<_, AppError>>`: `CreateDemoCommand`, `GetDemoQuery`, `ListDemosQuery`, `DeleteDemoCommand`. Notes has exactly two: `CreateNoteCommand` and `GetNoteQuery`. Concrete `IRequestHandler` classes are registered by `AddMediatR` assembly scanning in each module's descriptor. Data endpoints inject `ISender` and call `ISender.Send(message, ct)`.
 
@@ -145,13 +146,13 @@ node scripts/release-smoke.mjs
 npx --yes pnpm@10.30.3 package:source
 ```
 
-- `dev`: F# Host on `127.0.0.1:5080` plus Vite on `127.0.0.1:5173`; Vite proxies `/api` and `/openapi`.
-- `check`: brand, structure, MediatR/license, OpenAPI/SDK contract, executable architecture, Demo contract, `dotnet build -warnaserror`, and `svelte-check`.
-- `test`: build/publish, negative control, all original .NET test projects with exact retention checks, CQRS/startup tests, the separate Notes suite, synthetic SQLite backup/restore, frontend check, 5 unit tests, and 5 Playwright Demo journeys against the published single process. It also smokes the published Notes create/get endpoints.
-- `build`: frontend build -> `src/Host/wwwroot` -> `dotnet publish` -> `artifacts/publish/Fsso.Host.dll`.
+- `dev`: F# Host on `127.0.0.1:5080` (`FSSO_DEV_API_PORT`) plus SvelteKit on `127.0.0.1:5173` (`FSSO_DEV_WEB_PORT`). Vite proxies `/api` and `/openapi` to `FSSO_API_ORIGIN`.
+- `check`: brand, structure, MediatR/license, OpenAPI/SDK contract, executable architecture, Demo contract, `dotnet build -warnaserror`, `svelte-kit sync`, and `svelte-check`.
+- `test`: build/publish, negative control, all original .NET test projects with exact retention checks, CQRS/startup tests, the separate Notes suite, synthetic SQLite backup/restore, frontend check, 5 unit tests, and 5 Playwright Demo journeys against the published SvelteKit origin. It also smokes the published Notes create/get endpoints.
+- `build`: SvelteKit build -> `web/build/index.js`, then `dotnet publish` -> `artifacts/publish/Fsso.Host.dll`. The build stages a temporary `web/package.json` so adapter-node can see root runtime dependencies, then deletes it. The Host publish does not contain the page.
 - `dotnet artifacts/publish/Fsso.Host.dll --migrate-only`: apply migrations without starting HTTP; it uses the same fail-closed DB guard.
-- `release:smoke`: published single-process static/API/404/Demo restart/Notes create-get-restart smoke.
-- `package:source`: creates `artifacts/fsso-modular-source-v2.tar.gz` from committed `HEAD` (override with `FSSO_ARCHIVE_PATH=<path>`), then extracts to a new unique `independent-<sourceSha>-<timestamp>-<pid>` directory. It refuses to overwrite an existing archive or extraction path, runs frozen install, `pnpm check`, `pnpm test`, build/publish, backup/restore, Demo browser 5, one-process static/API, independent-host Demo create/list/get (get after restart; no delete or update), Notes create/get, restart persistence, report-placeholder/status gates, and a zero-legacy-brand census. The full `pnpm test` suite and release smoke exercise Demo delete; independent-host does not. It never deletes prior archives, extractions, or evidence.
+- `release:smoke`: published API plus SvelteKit Node process; proxied health, JSON 404, Demo and Notes create/get, restart persistence, and Demo delete.
+- `package:source`: creates `artifacts/fsso-modular-source-v2.tar.gz` from committed `HEAD` (override with `FSSO_ARCHIVE_PATH=<path>`), then extracts to a new unique `independent-<sourceSha>-<timestamp>-<pid>` directory. It refuses to overwrite an existing archive or extraction path, runs frozen install, `pnpm check`, `pnpm test`, build/publish, backup/restore, Demo browser 5, the two-process page/API check, independent-host Demo create/list/get through the SvelteKit proxy (get after API restart; no delete or update), Notes create/get, restart persistence, report-placeholder/status gates, and a zero-legacy-brand census. The full `pnpm test` suite and release smoke exercise Demo delete; independent-host does not. It never deletes prior archives, extractions, or evidence.
 
 Environment variables:
 
@@ -159,10 +160,13 @@ Environment variables:
 |---|---|---|
 | `FSSO_DB_PATH` | `data/fsso.db` | SQLite path, relative to working directory unless absolute |
 | `ASPNETCORE_URLS` | ASP.NET default; dev uses `http://127.0.0.1:5080` | Listen address |
-| `ASPNETCORE_ENVIRONMENT` | `Production` for published runs | `Development` disables static SPA hosting; use Vite for UI in dev |
+| `ASPNETCORE_ENVIRONMENT` | `Production` for published runs | `Development` is the dev Host; the page still comes from SvelteKit |
 | `FSSO_FAULT_INJECTION` | off | Test-only `X-Test-Fault` header support; never enable in production |
-| `VITE_API_BASE_URL` | empty (same origin) | Optional absolute API base for frontend build |
-| `BASE_URL` | `http://127.0.0.1:5173` | Playwright target; test harness sets the published URL |
+| `FSSO_API_ORIGIN` | `http://127.0.0.1:5080` | API origin used by the Vite dev proxy and the SvelteKit production proxy |
+| `FSSO_DEV_API_PORT` / `FSSO_DEV_WEB_PORT` | `5080` / `5173` | Dev listen ports |
+| `HOST` / `PORT` / `ORIGIN` | adapter-node defaults | Production SvelteKit listen address. Set `HOST=127.0.0.1` and a chosen `PORT` |
+| `VITE_API_BASE_URL` | empty (same origin) | Optional absolute API base. When empty, the browser calls the SvelteKit origin |
+| `BASE_URL` | `http://127.0.0.1:5173` | Playwright target; the test harness sets the published SvelteKit URL |
 | `FSSO_TEST_PORT`, `FSSO_RELEASE_PORT`, `FSSO_PACKAGE_PORT` | `0` (auto) | Optional fixed ports for test/smoke/package checks |
 | `FSSO_SCRATCH` | `artifacts/independence` | Source-package independent extraction root |
 
@@ -254,7 +258,7 @@ ASPNETCORE_ENVIRONMENT="Production" \
 dotnet artifacts/publish/Fsso.Host.dll
 ```
 
-Production is one .NET process serving `wwwroot` and `/api`; there is no SSR and no Node runtime. Unknown `/api/*` routes return JSON errors and never fall back to `index.html`. Do not point multiple application instances at the same SQLite file: SQLite locking + busy timeout protect a single process, not a multi-instance deployment. WAL and horizontal scaling are recommendations only, not implemented.
+Production is two processes. `dotnet artifacts/publish/Fsso.Host.dll` serves `/api` and OpenAPI. `node web/build/index.js` serves the SvelteKit page and proxies `/api` and `/openapi` to `FSSO_API_ORIGIN`. Node does not open SQLite. Unknown `/api/*` routes return JSON errors. Do not point multiple API instances at the same SQLite file: SQLite locking + busy timeout protect a single writer, not a multi-instance deployment. WAL and horizontal scaling are recommendations only, not implemented.
 
 Upgrade:
 
@@ -288,8 +292,8 @@ There is **no authentication or audit** in this starter. `/api` is unauthenticat
 ## 13. Troubleshooting
 
 - **Startup: legacy pre-FSSO default database error.** Set `FSSO_DB_PATH` to an explicit restored/fresh path. Do not delete or move the old file blindly; make and verify a backup first.
-- **`database is locked`.** Stop extra writers/instances; this app is single-process. Check the data directory permissions and the 5-second busy timeout.
-- **Static page 404 in production.** Run `pnpm build`; Production hosting uses `src/Host/wwwroot`. In Development the SPA is served by Vite, not Kestrel.
+- **`database is locked`.** Stop extra API writers. One Host process should own the SQLite file. Check the data directory permissions and the 5-second busy timeout.
+- **Page 404 in production.** Run `pnpm build`, start the Host, then start `node web/build/index.js` with `FSSO_API_ORIGIN` pointing at that Host. The Host itself does not serve the page.
 - **Migrations look stale.** Restart the app or run the migration path; never edit an already applied SQL file. Add a new numbered migration.
 - **SqlHydra types missing a table.** Migrate the schema DB, then rerun `bash scripts/gen-sqlhydra.sh`. The script uses the Host migrate-only path, so both modules are present.
 - **Package refuses to start.** The target archive (default `artifacts/fsso-modular-source-v2.tar.gz`) or extraction directory exists. Preserve it and set `FSSO_ARCHIVE_PATH` to a new versioned path; nothing is deleted automatically.
@@ -305,7 +309,7 @@ This repository does not currently ship a top-level `LICENSE` file; add an expli
 | FsToolkit.ErrorHandling `5.2.0` | MIT |
 | Microsoft.Data.Sqlite `10.0.14`, Microsoft.AspNetCore.OpenApi `10.0.14` | MIT |
 | SqlHydra.Query/Cli `5.1.1` | MIT |
-| Svelte `5.43.2`, Vite `7.1.12`, bits-ui `2.14.4`, Tailwind CSS `3.4.17`, shadcn-svelte `1.7.1`, @hey-api/openapi-ts `0.93.1`, Vitest `3.2.4`, svelte-check `4.3.3`, tailwind-variants `3.1.1`, clsx `2.1.1`, tailwind-merge `3.3.1` | MIT |
+| SvelteKit `2.50.2`, adapter-node `5.5.2`, Svelte `5.49.2`, Vite `7.3.1`, bits-ui `2.15.5`, Tailwind CSS `4.1.18`, shadcn-svelte `1.7.2`, formsnap `2.0.1`, sveltekit-superforms `2.29.1`, @hey-api/openapi-ts `0.93.1`, Vitest `3.2.4`, svelte-check `4.3.6`, tailwind-variants `3.2.2`, clsx `2.1.1`, tailwind-merge `3.4.0`, zod `4.3.6` | MIT |
 | TypeScript `5.9.3` | Apache-2.0 |
 | Playwright / @playwright/test `1.56.1` | Apache-2.0 |
 
@@ -313,7 +317,7 @@ This repository does not currently ship a top-level `LICENSE` file; add an expli
 
 ## 15. Implemented vs recommended
 
-**Implemented:** modular shared kernel/database/API, Demo and Notes modules, shared cross-module SQLite unit of work, compile-enforced module boundaries and executable architecture checks; real SQLite + forward-only migrations; FK on, busy timeout 5000, private cache, no WAL; fail-closed legacy default-path startup; explicit-path recovery; synthetic backup/restore verification; single-process production hosting; generated OpenAPI/SDK/SqlHydra types; shadcn component generation; exact original-test retention plus separately counted CQRS/startup and Notes tests.
+**Implemented:** modular shared kernel/database/API, Demo and Notes modules, shared cross-module SQLite unit of work, compile-enforced module boundaries and executable architecture checks; real SQLite + forward-only migrations; FK on, busy timeout 5000, private cache, no WAL; fail-closed legacy default-path startup; explicit-path recovery; synthetic backup/restore verification; two-process production hosting (API plus SvelteKit adapter-node); generated OpenAPI/SDK/SqlHydra types; shadcn component generation; exact original-test retention plus separately counted CQRS/startup and Notes tests.
 
 **Recommended, not implemented:** WAL/multi-instance deployment, authentication/authorization, audit logging, CSRF/rate limiting, managed backups/monitoring, TLS termination, reverse-proxy hardening, CI, Notes list/delete/tags/UI. These are operator or future-task responsibilities.
 

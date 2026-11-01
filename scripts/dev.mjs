@@ -1,4 +1,4 @@
-// 文件职责：并行启动后端 dotnet 开发进程和前端 Vite 服务，转发日志、处理端口与信号，并在退出时清理自己拥有的进程树，供本地联调使用。
+// 文件职责：并行启动 F# Host 与 SvelteKit 开发服务，按环境变量选择回环端口，把 /api 代理到 Host，并在退出时只清理自己拥有的进程树。
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -6,12 +6,14 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const smoke = process.argv.includes("--smoke");
+const apiPort = process.env.FSSO_DEV_API_PORT ?? "5080";
+const webPort = process.env.FSSO_DEV_WEB_PORT ?? "5173";
+const apiOrigin = `http://127.0.0.1:${apiPort}`;
+const webOrigin = `http://127.0.0.1:${webPort}`;
 const dbFile = resolve(root, "artifacts/dev.db");
 mkdirSync(dirname(dbFile), { recursive: true });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const pnpm = process.env.npm_execpath;
-const pnpmPrefix = pnpm?.includes("pnpm") ? [pnpm] : [];
 
 const web = resolve(root, "web");
 const children = [];
@@ -107,27 +109,38 @@ try {
       "src/Host",
       "--no-launch-profile",
       "--urls",
-      "http://127.0.0.1:5080",
+      apiOrigin,
     ],
     {
       label: "api",
       env: {
         FSSO_DB_PATH: dbFile,
         ASPNETCORE_ENVIRONMENT: "Development",
-        ASPNETCORE_URLS: "http://127.0.0.1:5080",
+        ASPNETCORE_URLS: apiOrigin,
       },
     }
   );
   start(
-    pnpmPrefix[0] ? process.execPath : "pnpm",
-    [...pnpmPrefix, "exec", "vite", "--config", "web/vite.config.ts", "--host", "127.0.0.1", "--port", "5173", "--strictPort"],
-    { label: "web" }
+    process.execPath,
+    [
+      resolve(root, "node_modules/vite/bin/vite.js"),
+      "--host",
+      "127.0.0.1",
+      "--port",
+      webPort,
+      "--strictPort",
+    ],
+    {
+      cwd: web,
+      label: "web",
+      env: { FSSO_API_ORIGIN: apiOrigin },
+    }
   );
 
-  await waitFor("http://127.0.0.1:5080/api/health", "API");
-  await waitFor("http://127.0.0.1:5173/", "Vite");
+  await waitFor(`${apiOrigin}/api/health`, "API");
+  await waitFor(`${webOrigin}/`, "SvelteKit");
 
-  const response = await fetch("http://127.0.0.1:5173/api/demos", {
+  const response = await fetch(`${webOrigin}/api/demos`, {
     signal: AbortSignal.timeout(5_000),
   });
   if (!response.ok) throw new Error(`Vite proxy returned HTTP ${response.status}`);
@@ -144,7 +157,7 @@ try {
     await shutdown();
   } else {
     console.log(
-      "Dev servers ready at http://127.0.0.1:5173 (Ctrl-C to stop, --smoke for bounded check)."
+      `Dev servers ready at ${webOrigin} (API ${apiOrigin}; Ctrl-C to stop, --smoke for bounded check).`
     );
   }
 } catch (error) {

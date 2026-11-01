@@ -1,6 +1,13 @@
-// 文件职责：只启用 Svelte 的 Vite 预处理器，不使用 SvelteKit 路由或适配器，让纯 Vite 构建能够编译 .svelte 组件，同时保留 Vite 插件链的最小配置，避免引入额外运行层。
+// 文件职责：把 web 目录配置为单包内的 SvelteKit 根，使用 adapter-node 输出 Node 服务，并启用 Vite 预处理；不引入工作区，也不把前端改回 Vite 单页挂载。
+import adapter from "@sveltejs/adapter-node";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
-export default {
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
   preprocess: vitePreprocess(),
+  kit: {
+    adapter: adapter({ out: "build" }),
+  },
 };
+
+export default config;

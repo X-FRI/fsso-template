@@ -1,20 +1,22 @@
-// 文件职责：配置 Vite 的仓库内根目录、Svelte 插件、$lib 路径别名，以及 /api 与 /openapi 到本机 Host 的开发代理，支撑前端独立启动和联调；Host 自身没有内置端口默认值，代理目标指向开发脚本（scripts/dev.mjs）为 Host 设置并等待的 5080 端口，Vite 未配置 server.port，开发服务器使用默认 5173，与 Host 端口不同。
-import { defineConfig } from "vite";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { fileURLToPath, URL } from "node:url";
+// 文件职责：为 SvelteKit 挂上 Tailwind 4 的 Vite 插件，并把浏览器访问的 /api 与 /openapi 代理到 FSSO_API_ORIGIN；代理只转发 HTTP，不打开 SQLite，也不做数据库认证，单元测试仍使用 node 环境。表单校验走官方适配器公开入口，本配置不再替换第三方模块。
+import tailwindcss from "@tailwindcss/vite";
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vitest/config";
+
+const apiOrigin = process.env.FSSO_API_ORIGIN ?? "http://127.0.0.1:5080";
 
 export default defineConfig({
-  root: fileURLToPath(new URL(".", import.meta.url)),
-  plugins: [svelte()],
-  resolve: {
-    alias: {
-      $lib: fileURLToPath(new URL("./src/lib", import.meta.url)),
+  plugins: [tailwindcss(), sveltekit()],
+  server: {
+    host: "127.0.0.1",
+    proxy: {
+      "/api": apiOrigin,
+      "/openapi": apiOrigin,
     },
   },
-  server: {
-    proxy: {
-      "/api": "http://127.0.0.1:5080",
-      "/openapi": "http://127.0.0.1:5080",
-    },
+  test: {
+    environment: "node",
+    include: ["src/**/*.{test,spec}.ts"],
+    exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
   },
 });

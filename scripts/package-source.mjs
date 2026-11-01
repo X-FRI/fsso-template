@@ -1,4 +1,4 @@
-// 文件职责：要求 git 工作树干净后归档 HEAD，解压到独立目录并执行安装、检查、构建、测试、契约、备份、浏览器与重启验收，最后输出包哈希和证据摘要；本任务仅添加首部注释，运行逻辑与常量保持原样。
+// 文件职责：要求 git 工作树干净后归档 HEAD，解压到独立目录并执行安装、检查、构建、测试、契约、备份、浏览器与重启验收；发布页由 SvelteKit Node 进程提供，API 仍由 Host 提供。
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -10,10 +10,12 @@ import {
   httpJson,
   killOwnedTree,
   pnpmRunner,
+  reserveLoopbackPort,
   root,
   runLogged,
   sha,
   sleep,
+  startKitServer,
   startProcess,
   waitForHttp,
 } from "./lib.mjs";
@@ -44,7 +46,11 @@ const required = [
   "sqlhydra.toml",
   "openapi/openapi.json",
   "web/index.html",
+  "web/svelte.config.js",
+  "web/src/hooks.server.ts",
+  "web/src/routes/+page.svelte",
   "web/vite.config.ts",
+  "AGENTS.md",
   "web/src/App.svelte",
   "web/components.json",
   "web/openapi-ts.config.ts",
@@ -166,7 +172,9 @@ const forbidden = [
 const legacyToken = Buffer.from("Y2xpbndpc2U=", "base64").toString("latin1");
 const summary = [];
 let host = null;
+let kit = null;
 let base = null;
+let webOrigin = null;
 let hostLog = "";
 let exitCode = 0;
 
@@ -219,11 +227,17 @@ function sha256File(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-async function stopHost() {
-  if (!host) return;
-  const pid = host.pid;
+async function stopOwned(child) {
+  if (!child) return;
+  const pid = child.pid;
   await killOwnedTree(pid);
-  await Promise.race([new Promise((resolve) => host.once("exit", resolve)), sleep(5_000)]);
+  await Promise.race([new Promise((resolveStop) => child.once("exit", resolveStop)), sleep(5_000)]);
+}
+
+async function stopHost() {
+  await stopOwned(kit);
+  kit = null;
+  await stopOwned(host);
   host = null;
 }
 
@@ -380,17 +394,16 @@ try {
   const published = resolve(extracted, "artifacts/publish");
   const dll = resolve(published, "Fsso.Host.dll");
   assert(existsSync(dll), `independent published DLL missing: ${dll}`);
-  assert(existsSync(resolve(published, "wwwroot/index.html")), "independent published index.html missing");
+  assert(existsSync(resolve(extracted, "web/build/index.js")), "independent SvelteKit build missing");
 
   const db = resolve(extracted, "artifacts/independent.db");
-  const port = Number(process.env.FSSO_PACKAGE_PORT ?? 0);
-  const listenUrl = `http://127.0.0.1:${Number.isInteger(port) ? port : 0}`;
-  base = null;
-  hostLog = "";
+  const requestedPort = Number(process.env.FSSO_PACKAGE_PORT ?? 0);
+  const apiPort = requestedPort > 0 ? requestedPort : await reserveLoopbackPort();
+  const listenUrl = `http://127.0.0.1:${apiPort}`;
+  base = listenUrl;
   host = startProcess("independent-host", "dotnet", [dll], {
     cwd: published,
     logFile: stageLog("independent-host"),
-    onText: listeningUrl,
     env: {
       ...process.env,
       FSSO_DB_PATH: db,
@@ -399,20 +412,31 @@ try {
       FSSO_FAULT_INJECTION: "0",
     },
   });
-  await waitForIndependent("independent app");
+  await waitForIndependent("independent API");
   assertSingleDotnetTree(host.pid);
+  const startedKit = startKitServer("independent-web", {
+    appRoot: extracted,
+    port: await reserveLoopbackPort(),
+    apiOrigin: listenUrl,
+    logFile: stageLog("independent-web"),
+  });
+  kit = startedKit.child;
+  webOrigin = startedKit.origin;
+  await waitForHttp(`${webOrigin}/`, { child: kit, label: "independent SvelteKit" });
 
-  const index = await fetch(`${base}/`);
-  assert(index.status === 200 && (await index.text()).includes('<div id="app">'), "independent static index failed");
-  const html = await (await fetch(`${base}/`)).text();
-  const asset = html.match(/(?:src|href)="(\/assets\/[^"]+\.js)"/);
-  assert(asset, "independent index lacks asset");
-  assert((await fetch(`${base}${asset[1]}`)).status === 200, "independent asset failed");
-  record("independent static/one-process", 0, `${base}; no child processes`);
+  const page = await fetch(`${webOrigin}/`);
+  const html = await page.text();
+  assert(page.status === 200 && html.includes("FSSO Stack"), "independent SvelteKit page failed");
+  const asset = html.match(/(\/_app\/[^"']+\.js)/);
+  assert(asset, "independent page lacks a client script");
+  assert((await fetch(`${webOrigin}${asset[1]}`)).status === 200, "independent client script failed");
+  const apiPage = await httpJson(`${base}/`);
+  assert(apiPage.status === 404, "independent API process served a page");
+  record("independent page/two-process", 0, `${webOrigin} -> ${base}`);
 
   const ids = [];
   for (let index = 1; index <= 3; index += 1) {
-    const created = await httpJson(`${base}/api/demos`, {
+    const created = await httpJson(`${webOrigin}/api/demos`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: `Independent demo ${index} ${Date.now()}`, description: "archive verification" }),
@@ -420,23 +444,23 @@ try {
     assert(created.status === 201, `independent create returned ${created.status}`);
     ids.push(created.json.id);
   }
-  const list = await httpJson(`${base}/api/demos?page=1&limit=2`);
+  const list = await httpJson(`${webOrigin}/api/demos?page=1&limit=2`);
   assert(list.status === 200, `independent list returned ${list.status}`);
   assert(Array.isArray(list.json?.data) && list.json.data.length === 2, "pagination limit=2 did not return 2 rows");
   assert(list.json.total >= 3, "pagination total is < 3");
-  const page2 = await httpJson(`${base}/api/demos?page=2&limit=2`);
+  const page2 = await httpJson(`${webOrigin}/api/demos?page=2&limit=2`);
   assert(page2.status === 200 && Array.isArray(page2.json?.data), "page 2 failed");
-  const invalidPage = await httpJson(`${base}/api/demos?page=0`);
+  const invalidPage = await httpJson(`${webOrigin}/api/demos?page=0`);
   assert(invalidPage.status === 400, `invalid page returned ${invalidPage.status}`);
-  const missing = await httpJson(`${base}/api/demos/not-a-guid`);
+  const missing = await httpJson(`${webOrigin}/api/demos/not-a-guid`);
   assert(missing.status === 400, `invalid id returned ${missing.status}`);
-  const unknown = await httpJson(`${base}/api/unknown`);
+  const unknown = await httpJson(`${webOrigin}/api/unknown`);
   assert(unknown.status === 404, `unknown API returned ${unknown.status}`);
   assert((unknown.response.headers.get("content-type") ?? "").includes("application/json"), "unknown API not JSON");
   assert(!unknown.text.includes("<html"), "unknown API fell back to HTML");
 
   const noteTitle = `Independent note ${Date.now()}`;
-  const note = await httpJson(`${base}/api/notes`, {
+  const note = await httpJson(`${webOrigin}/api/notes`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ title: noteTitle, body: "archive notes verification" }),
@@ -445,18 +469,16 @@ try {
   assert(typeof note.json?.id === "string" && note.json.id.length > 0, "independent note create has no id");
   assert(note.response.headers.get("location") === `/api/notes/${note.json.id}`, "independent note Location header mismatch");
   const noteId = note.json.id;
-  const fetchedNote = await httpJson(`${base}/api/notes/${noteId}`);
+  const fetchedNote = await httpJson(`${webOrigin}/api/notes/${noteId}`);
   assert(fetchedNote.status === 200, `independent note get returned ${fetchedNote.status}: ${fetchedNote.text}`);
   assert(fetchedNote.json?.id === noteId && fetchedNote.json?.title === noteTitle, "independent note get mismatch");
   record("independent API create/list/400/404/pagination + Notes create/get", 0, `demos=${ids.length} note=${noteId}`);
 
-  await stopHost();
-  base = null;
-  hostLog = "";
+  await stopOwned(host);
+  host = null;
   host = startProcess("independent-host-restart", "dotnet", [dll], {
     cwd: published,
     logFile: stageLog("independent-host-restart"),
-    onText: listeningUrl,
     env: {
       ...process.env,
       FSSO_DB_PATH: db,
@@ -464,11 +486,11 @@ try {
       ASPNETCORE_ENVIRONMENT: "Production",
     },
   });
-  await waitForIndependent("independent restarted app");
+  await waitForIndependent("independent restarted API");
   assertSingleDotnetTree(host.pid);
-  const persisted = await httpJson(`${base}/api/demos/${ids[0]}`);
+  const persisted = await httpJson(`${webOrigin}/api/demos/${ids[0]}`);
   assert(persisted.status === 200 && persisted.json?.id === ids[0], "independent restart Demo persistence failed");
-  const persistedNote = await httpJson(`${base}/api/notes/${noteId}`);
+  const persistedNote = await httpJson(`${webOrigin}/api/notes/${noteId}`);
   assert(persistedNote.status === 200, `independent restart Notes persistence returned ${persistedNote.status}`);
   assert(persistedNote.json?.id === noteId && persistedNote.json?.title === noteTitle, "independent restart Notes persistence failed");
   record("independent restart persistence", 0, `demo=${ids[0]} note=${noteId}`);

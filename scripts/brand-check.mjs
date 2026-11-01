@@ -26,7 +26,7 @@ const skippedDirectories = new Set([
   "TestResults",
   "playwright-browsers",
 ]);
-const skippedRelativePrefixes = ["web/dist", "src/Host/wwwroot"];
+const skippedRelativePrefixes = ["web/dist", "web/build", "web/.svelte-kit", "src/Host/wwwroot"];
 
 function toPosix(path) {
   return path.split(sep).join("/");

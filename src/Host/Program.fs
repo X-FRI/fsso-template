@@ -1,4 +1,4 @@
-// 文件职责：Host 入口按分段拼接的旧默认库文件名做存在性检查、FSSO_DB_PATH 解析、迁移、模块描述符注册、端点映射、异常与 400 统一响应、健康检查、OpenAPI 和静态回退的顺序装配 WebApplication，并支持 --migrate-only 提前退出。
+// 文件职责：Host 入口按分段拼接的旧默认库文件名做存在性检查、FSSO_DB_PATH 解析、迁移、模块描述符注册、端点映射、异常与 400 统一响应、健康检查和 OpenAPI 的顺序装配 WebApplication，并支持 --migrate-only 提前退出；界面由独立的 SvelteKit Node 进程提供，本进程不再托管静态页面。
 module Fsso.Host.Program
 
 open System
@@ -164,26 +164,13 @@ let buildApp (args: string[]) : WebApplication =
 
     app.MapOpenApi() |> ignore
 
-    let webRoot = app.Environment.WebRootPath
-
-    let staticMode =
-        not (app.Environment.IsDevelopment())
-        && not (String.IsNullOrWhiteSpace webRoot)
-        && File.Exists(Path.Combine(webRoot, "index.html"))
-
-    if staticMode then
-        app.UseDefaultFiles() |> ignore
-        app.UseStaticFiles() |> ignore
-
+    // 未知 API 保持 JSON 404。页面请求由 SvelteKit 进程处理，这里不再回退到静态 index.html。
     app.MapFallback(
         "/api/{**rest}",
         Func<HttpContext, IResult>(fun context ->
             HttpResults.jsonError context StatusCodes.Status404NotFound "not_found" "Resource not found.")
     )
     |> ignore
-
-    if staticMode then
-        app.MapFallbackToFile("index.html") |> ignore
 
     app
 

@@ -1,4 +1,4 @@
-// 文件职责：Playwright 前端启动包装，直接调用仓库内 Vite 可执行文件以严格端口启动开发服务器，并把 SIGINT 与 SIGTERM 转换为整组进程的有序终止。
+// 文件职责：Playwright 前端启动包装，在 web 目录以严格端口启动 SvelteKit 的 Vite 开发服务器，并把 SIGINT 与 SIGTERM 转换为整组进程的有序终止，不打开数据库。
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

@@ -31,6 +31,42 @@ const NEW_FILES = [
   "docs/evidence/comment-equivalence-baseline.bf647e31.json",
   "docs/architecture-guide.zh.md",
 ];
+// 这些基线文件的去注释正文因 SvelteKit 迁移而改变。豁免只覆盖这份清单，其余基线文件仍必须与去注释基线一致。
+const FRAMEWORK_MIGRATION = new Set([
+  ".gitignore",
+  "scripts/brand-check.mjs",
+  "scripts/build.mjs",
+  "scripts/check.mjs",
+  "scripts/dev.mjs",
+  "scripts/lib.mjs",
+  "scripts/package-source.mjs",
+  "scripts/release-smoke.mjs",
+  "scripts/shadcn-add.mjs",
+  "scripts/structure-check.mjs",
+  "scripts/test.mjs",
+  "src/Host/Program.fs",
+  "web/e2e/demo.spec.ts",
+  "web/e2e/start-frontend.mjs",
+  "web/postcss.config.js",
+  "web/src/App.svelte",
+  "web/src/app.css",
+  "web/src/lib/api/client.ts",
+  "web/src/main.ts",
+  "web/svelte.config.js",
+  "web/tailwind.config.js",
+  "web/vite.config.ts",
+]);
+function isSvelteKitAddition(path) {
+  return (
+    path.startsWith("web/src/routes/") ||
+    path.startsWith("web/src/lib/hooks/") ||
+    path.startsWith("web/src/lib/demo/") ||
+    path === "web/src/hooks.ts" ||
+    path === "web/src/hooks.server.ts" ||
+    path === "web/src/app.d.ts" ||
+    path === "web/src/lib/api/queries.ts"
+  );
+}
 const SKIP_DIRS = new Set([
   ".git",
   ".tools",
@@ -47,6 +83,7 @@ const SKIP_DIRS = new Set([
   "dist",
   "wwwroot",
   ".svelte-kit",
+  "build",
 ]);
 const BASELINE_PATHS = `.config/dotnet-tools.json
 .gitignore
@@ -1229,10 +1266,16 @@ for (const path of files) {
   if (!isBaseline) {
     if (NEW_FILES.includes(path)) {
       results.push({ path, status: "NEW", detail: "listed new deliverable has no baseline entry" });
+    } else if (isSvelteKitAddition(path)) {
+      results.push({ path, status: "MIGRATED", detail: "SvelteKit addition declared by the framework migration allowlist" });
     } else {
       results.push({ path, status: "UNEXPECTED_NEW", detail: "new file is not in the declared deliverable list" });
       failures.push(`${path}: new file is not in the declared deliverable list`);
     }
+    continue;
+  }
+  if (FRAMEWORK_MIGRATION.has(path)) {
+    results.push({ path, status: "MIGRATED", detail: "framework migration rewrote this baseline member" });
     continue;
   }
   const baselineStatus = baselineDecision(baselineAvailable, diagnosticMissingBaseline);

@@ -52,6 +52,8 @@ const SKIP_DIRS = new Set([
   "data",
   "dist",
   "wwwroot",
+  ".svelte-kit",
+  "build",
 ]);
 const BASELINE_PATHS = `.config/dotnet-tools.json
 .gitignore

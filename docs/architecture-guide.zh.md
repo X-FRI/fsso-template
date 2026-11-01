@@ -163,7 +163,7 @@ Notes 没有列表、删除、Tags 或前端 UI；这些不是遗漏，而是模
 - 非取消的 `Error(AppError...)` 结果本身不会以异常形式向上抛；正常路径第一次回滚失败会进入 catch 分支，重试成功时可能改为返回 `AppError.unexpected`，再由端点通过 `HttpResults.toHttpResult` 映射；非取消路径只有 catch 分支回滚失败时传播该次回滚异常。取消路径不返回 `Error`：catch 分支回滚成功时重抛原 `OperationCanceledException`，回滚失败时传播该次回滚异常。
 - `try` 内捕获的非取消异常（包括正常路径第一次回滚失败）在 catch 分支回滚成功时被包成 `AppError.unexpected`，`AppError.Cause` 只保留给内部，`HttpResults` 输出的是固定 `ErrorResponse`，不把异常文本或类型写进响应体；`try` 前失败会直接传播，非取消路径的 catch 分支回滚失败会传播该次回滚异常。
 - 取消路径不返回 `Error`：catch 分支回滚成功后继续向上传播原取消异常，Host 中间件遇到 `OperationCanceledException` 时重新抛出与 `RequestAborted` 关联的取消，不把取消误报成 500；catch 分支回滚失败时传播该次回滚异常。
-- Host 中间件另外把 `BadHttpRequestException` 与格式错误响应统一成 400 `ErrorResponse`；未知 `/api/*` 由 JSON 404 回退处理，绝不回退到 SPA 的 `index.html`。
+- Host 中间件另外把 `BadHttpRequestException` 与格式错误响应统一成 400 `ErrorResponse`；未知 `/api/*` 由 JSON 404 回退处理。页面由 SvelteKit 进程渲染，Host 不再回退到 `index.html`。
 
 `src/Shared/Fsso.SharedKernel/Errors.fs` 定义 `ErrorKind` 与 `AppError`；`src/Shared/Fsso.Api/HttpResults.fs` 负责状态码映射和 `traceId`。
 
@@ -220,7 +220,7 @@ F# 的 `Compile Include` 顺序就是符号可见顺序，不能随意重排：
 4. `Composition.registerInfrastructure`：`StoreFactory.validate()` 后注册单例 `IUnitOfWork`。
 5. 注册 `IFaultInjector`、基础 OpenAPI、模块服务与模块 OpenAPI。
 6. `builder.Build()`。
-7. 映射模块端点、统一异常中间件、`/api/health`、`MapOpenApi`、静态文件与 API 404 回退。
+7. 映射模块端点、统一异常中间件、`/api/health`、`MapOpenApi` 与 API JSON 404。Host 不映射静态页面。
 
 `--migrate-only` 在 `main` 中提前分支，只执行 `Composition.migrate` 后退出，不构建 Web 宿主。
 
@@ -244,8 +244,8 @@ F# 的 `Compile Include` 顺序就是符号可见顺序，不能随意重排：
 
 - `web/openapi-ts.config.ts` 把 `openapi/openapi.json` 作为输入，输出到 `web/src/lib/api/generated`，插件为 TypeScript、client-fetch 与 SDK。
 - `scripts/gen-sdk.mjs` 调用 hey-api，并检查生成的源码包含六个业务操作和 `DemoResponse`、`CreateDemoRequest`、`PagedDemoResponse`、`NoteResponse`、`CreateNoteRequest` 类型。
-- `web/src/lib/api/index.ts` 统一导出生成 SDK 与配置后的 client；`web/src/lib/api/client.ts` 只在设置了 `VITE_API_BASE_URL` 时覆盖同源默认地址。
-- `web/src/App.svelte` 从 `$lib/api` 导入 `createDemo`、`listDemos`、`getDemo`、`deleteDemo`，所有请求走生成 SDK，不手写 `fetch`/`axios`。
+- `web/src/lib/api/index.ts` 统一导出生成 SDK 与配置后的 client。浏览器在未设置 `VITE_API_BASE_URL` 时使用当前源；服务端渲染若发起请求则使用 `FSSO_API_ORIGIN`。
+- `web/src/App.svelte` 的创建与删除直接调用生成 SDK，列表与详情经 `web/src/lib/api/queries.ts` 的 TanStack Query 选项调用同一 SDK。页面不手写 `fetch`/`axios`。
 - 生成目录与 OpenAPI 快照由 `scripts/contract-check.mjs` 按 `scripts/contract-hashes.json` 校验哈希。修改契约必须重新运行生成器并更新哈希，不能手工编辑生成文件。
 
 ## 7. 迁移顺序、备份与恢复
@@ -283,23 +283,21 @@ README 第 10 节给出人工备份/恢复命令。生产升级顺序应为：�
 
 ### 8.1 开发
 
-`scripts/dev.mjs` 并行启动：
+`scripts/dev.mjs` 并行启动两个进程：
 
-- `dotnet run --project src/Host --no-launch-profile --urls http://127.0.0.1:5080`，数据库 `artifacts/dev.db`，环境 `Development`。
-- Vite `127.0.0.1:5173`，代理 `/api` 与 `/openapi` 到 5080。
+- `dotnet run --project src/Host --no-launch-profile`，默认 `http://127.0.0.1:5080`，可用 `FSSO_DEV_API_PORT` 覆盖。数据库是 `artifacts/dev.db`，环境是 `Development`。
+- 在 `web/` 运行 SvelteKit 的 `vite dev`，默认 `http://127.0.0.1:5173`，可用 `FSSO_DEV_WEB_PORT` 覆盖。Vite 把 `/api` 与 `/openapi` 代理到 `FSSO_API_ORIGIN`。
 
-脚本等待 `/api/health` 与 Vite 首页，再通过 Vite 代理请求 `/api/demos` 做冒烟，退出时清理自己拥有的进程树。
+脚本等待 API 的 `/api/health` 与 SvelteKit 首页，再通过页面源请求 `/api/demos` 做冒烟，退出时只清理自己拥有的进程树。
 
 ### 8.2 生产
 
-`scripts/build.mjs` 执行前端构建，把产物复制到 `src/Host/wwwroot`，再 `dotnet publish` 到 `artifacts/publish`。生产运行时只有一个 .NET 进程：
+`scripts/build.mjs` 在 `web/` 执行 `vite build`，产物是 `web/build/index.js`，然后 `dotnet publish` 到 `artifacts/publish`。发布目录不包含页面。生产运行时是两个进程：
 
-- `ASPNETCORE_ENVIRONMENT=Production`；
-- 静态文件来自 `wwwroot`；
-- `/api` 与静态 SPA 同源；
-- 未知 `/api/*` 返回 JSON 404，不回退到 `index.html`。
-
-`Development` 下不使用 Kestrel 静态 SPA，前端由 Vite 提供。
+- `ASPNETCORE_ENVIRONMENT=Production` 的 `dotnet artifacts/publish/Fsso.Host.dll` 只提供 API 与 OpenAPI。
+- `HOST=127.0.0.1 PORT=<port> FSSO_API_ORIGIN=<api> node web/build/index.js` 提供 SvelteKit 页面，并把 `/api` 与 `/openapi` 代理到 API。
+- 浏览器只访问 Node 源，因此页面与 API 对浏览器同源。
+- 未知 `/api/*` 仍由 Host 返回 JSON 404。Node 不打开 SQLite。
 
 ## 9. 测试分层
 

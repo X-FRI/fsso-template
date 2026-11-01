@@ -1,3 +1,4 @@
+# 文件职责：规定工具链、构建产物、数据库、日志、测试结果、前端 dist 与 SvelteKit 构建目录的忽略范围，避免生成物进入版本库。
 .tools/
 .tmp/
 node_modules/
@@ -25,3 +26,5 @@ src/Host/wwwroot/
 
 # Frontend build output
 web/dist/
+web/build/
+web/.svelte-kit/

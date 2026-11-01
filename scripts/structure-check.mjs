@@ -22,7 +22,32 @@ assert(!existsSync(resolve(root, "apps")), "apps/ must not exist");
 assert(!existsSync(resolve(root, "web/package.json")), "web/package.json must not exist");
 assert(existsSync(resolve(root, "pnpm-lock.yaml")), "root pnpm-lock.yaml missing");
 
-for (const dependency of ["svelte", "vite", "tailwindcss", "bits-ui", "clsx", "tailwind-merge", "tailwind-variants", "@hey-api/client-fetch", "@playwright/test", "vitest", "svelte-check", "typescript", "shadcn-svelte"]) {
+for (const dependency of [
+  "svelte",
+  "vite",
+  "tailwindcss",
+  "bits-ui",
+  "clsx",
+  "tailwind-merge",
+  "tailwind-variants",
+  "@hey-api/client-fetch",
+  "@playwright/test",
+  "vitest",
+  "svelte-check",
+  "typescript",
+  "shadcn-svelte",
+  "@sveltejs/kit",
+  "@sveltejs/adapter-node",
+  "@sveltejs/vite-plugin-svelte",
+  "@tailwindcss/vite",
+  "tw-animate-css",
+  "formsnap",
+  "sveltekit-superforms",
+  "@tanstack/svelte-query",
+  "@tanstack/table-core",
+  "@lucide/svelte",
+  "zod",
+]) {
   const owned = pkg.dependencies?.[dependency] ?? pkg.devDependencies?.[dependency];
   assert(Boolean(owned), `root package must own ${dependency}`);
 }
@@ -145,8 +170,19 @@ for (const file of ["scripts/dev.mjs", "scripts/gen-openapi.mjs", "scripts/gen-s
 assert(!existsSync(resolve(root, "scripts/map-app.mjs")), "old mapping script must not exist");
 assert(read("openapi/openapi.json").includes('"title": "FSSO Stack API"'), "OpenAPI title must be FSSO Stack API");
 assert(read("web/index.html").includes("<title>FSSO Stack</title>"), "UI index title must be FSSO Stack");
+assert(read("web/src/app.html").includes("<title>FSSO Stack</title>"), "SvelteKit document title must be FSSO Stack");
 assert(read("web/src/App.svelte").includes(">FSSO Stack</h1>"), "UI heading must be FSSO Stack");
+assert(read("web/svelte.config.js").includes("@sveltejs/adapter-node"), "frontend must use adapter-node");
+assert(read("web/src/hooks.server.ts").includes('pathname.startsWith("/api/")'), "SvelteKit server hook must proxy /api");
+assert(read("web/src/App.svelte").includes("Form.Field"), "create form must use Formsnap fields");
+assert(read("web/src/App.svelte").includes("superForm"), "create form must use Superforms");
+assert(!read("src/Host/Program.fs").includes("UseStaticFiles"), "Host must not serve static pages");
 assert(read(".gitignore").includes("web/dist/"), ".gitignore must ignore web/dist/");
+assert(read(".gitignore").includes("web/build/"), ".gitignore must ignore web/build/");
+const agents = read("AGENTS.md");
+assert(agents.includes("SvelteKit") && agents.includes("adapter-node"), "AGENTS.md must require SvelteKit adapter-node");
+assert(agents.includes("Form.Field") && agents.includes("sveltekit-superforms"), "AGENTS.md must require Formsnap and Superforms");
+assert(agents.includes("MediatR") && agents.includes("SqlHydra") && agents.includes("SQLite"), "AGENTS.md must keep the backend stack");
 assert(read("scripts/package-source.mjs").includes("fsso-modular-source-v2.tar.gz"), "archive default must be fsso-modular-source-v2.tar.gz");
 assert(read("scripts/package-source.mjs").includes("FSSO_ARCHIVE_PATH"), "package-source must support an explicit FSSO_ARCHIVE_PATH");
 assert(read("README.md").includes("fsso-modular-source-v2.tar.gz"), "README.md must document the v2 archive name");
